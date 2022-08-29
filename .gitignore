@@ -26,6 +26,9 @@
 # Visual Studio cache directory
 .vs/
 
+# VSCode cache directory
+.vscode/
+
 # Gradle cache directory
 .gradle/
 
@@ -70,3 +73,8 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+
+iOSBuild_unityplugin/Libraries/libil2cpp.a
+iOSBuild_unityplugin/Libraries/libiPhone-lib.a
+iOSBuild_unityplugin/Classes/Native/*
