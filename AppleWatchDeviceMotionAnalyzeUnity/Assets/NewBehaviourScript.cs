@@ -13,6 +13,12 @@ public class NewBehaviourScript : MonoBehaviour
 	Serie[] angleChartSeries;
 	List<float> frameTime = new List<float>();
 	public Dropdown recordDropdown;
+	public Transform watchObj;
+
+	public MotionParameterLineChartScript motionParameterLineChartPrefab;
+
+    List<Hashtable> watchDataJsonList = new List<Hashtable>();
+	List<MotionParameterLineChartScript> patameterChartList = new List<MotionParameterLineChartScript>();
 	
 
 
@@ -24,28 +30,11 @@ public class NewBehaviourScript : MonoBehaviour
 		WatchConnectivityUnityPlugin.SendToWatch("{\"changeData\":\"Attitude\"}");
 #endif
 
-		angleChartSeries = new Serie[] { angleAccChart.series[0], angleAccChart.series[1], angleAccChart.series[2], angleAccChart.series[3] };
-		for (int i = 0; i < angleChartSeries.Length; i++)
-		{
-			angleChartSeries[i].ClearData();
-			angleChartSeries[i].maxCache = 99;
-		}
+	}
 
-		recordDropdown.ClearOptions();
-		List<string> optionList = new List<string> {"Attitude", "Gravity", "Acceleration"};
-		recordDropdown.AddOptions(optionList);
-		recordDropdown.onValueChanged.AddListener((value) =>
-		{
-#if !UNITY_EDITOR
-			WatchConnectivityUnityPlugin.SendToWatch("{\"changeData\":\"" + recordDropdown.options[recordDropdown.value].text + "\"}");
-#endif
-			for (int i = 0; i < angleChartSeries.Length; i++)
-			{
-				angleChartSeries[i].ClearData();
-				angleChartSeries[i].maxCache = 99;
-			}
-		});
-		recordDropdown.value = 0;
+	private void Start()
+	{
+		patameterChartList.Add(motionParameterLineChartPrefab);
 	}
 
 	// Update is called once per frame
@@ -55,10 +44,29 @@ public class NewBehaviourScript : MonoBehaviour
 #if UNITY_EDITOR
 		if (Input.GetKeyDown(KeyCode.Space))
 		{
-			OnPluginCallBack("{\"MT\":\"airShot\",\"airType\": \"\",\"shotCount\":" + (UnityEngine.Random.Range(0, 100)) + "}");
+			Hashtable json = new Hashtable();
+			json.Add("ts", Time.realtimeSinceStartup);
+			json.Add("gravity", new ArrayList() { 
+				Convert.ToString((int)(watchObj.eulerAngles.x * 1000), 16), 
+				Convert.ToString((int)((watchObj.eulerAngles.y + UnityEngine.Random.Range(0, 99)) * 1000), 16), 
+				Convert.ToString((int)(watchObj.eulerAngles.y * 1000), 16), 
+				Convert.ToString((int)(watchObj.eulerAngles.z * 1000), 16) });
+			OnPluginCallBack(json.toJson());
 		}
-		transform.parent.localRotation = Quaternion.Euler(offset_x.value, offset_y.value, offset_z.value);
+		//transform.parent.localRotation = Quaternion.Euler(offset_x.value, offset_y.value, offset_z.value);
 #endif
+	}
+
+	public void AddPatameterLineChart()
+	{
+		MotionParameterLineChartScript parameterLineChart = Instantiate<MotionParameterLineChartScript>(
+			motionParameterLineChartPrefab, Vector3.zero, Quaternion.identity, motionParameterLineChartPrefab.transform.parent);
+		parameterLineChart.transform.SetSiblingIndex(parameterLineChart.transform.GetSiblingIndex() - 1);
+		patameterChartList.Add(parameterLineChart);
+		foreach (var json in watchDataJsonList)
+		{
+			parameterLineChart.AddDataJson(json);
+		}
 	}
 
 	public void ForwardCenter()
@@ -95,6 +103,12 @@ public class NewBehaviourScript : MonoBehaviour
 				logText.text += "\nwatch fps = " + ((frameTime.Count - i) / (t1 - frameTime[i]));
 				break;
 			}
+		}
+
+		watchDataJsonList.Add(msgJson);
+		for (int i = 0; i < patameterChartList.Count; i++)
+		{
+			patameterChartList[i].AddDataJson(msgJson);
 		}
 
 		if (msgJson.ContainsKey("att"))
