@@ -45,12 +45,18 @@ public class NewBehaviourScript : MonoBehaviour
 		if (Input.GetKeyDown(KeyCode.Space))
 		{
 			Hashtable json = new Hashtable();
-			json.Add("ts", Time.realtimeSinceStartup);
-			json.Add("gravity", new ArrayList() { 
+			//json.Add("ts", Time.realtimeSinceStartup);
+			json.Add("ts", 510060.1911390417 + Time.realtimeSinceStartup);
+			/*json.Add("gravity", new ArrayList() { 
 				Convert.ToString((int)(watchObj.eulerAngles.x * 1000), 16), 
 				Convert.ToString((int)((watchObj.eulerAngles.y + UnityEngine.Random.Range(0, 99)) * 1000), 16), 
-				Convert.ToString((int)(watchObj.eulerAngles.y * 1000), 16), 
-				Convert.ToString((int)(watchObj.eulerAngles.z * 1000), 16) });
+				Convert.ToString((int)(watchObj.eulerAngles.z * 1000), 16) });*/
+			json.Add("gravity", new ArrayList() { "-2d", "5c", "-3e2" });
+			json.Add("userAcc", new ArrayList() { "1", "f", "-1" });
+			json.Add("rotaRate", new ArrayList() { "3c", "-e", "2" });
+			json.Add("attitude_rpy", new ArrayList() { "-2d", "-5c", "ff" });
+			json.Add("attitude_q", new ArrayList() { "-2b", "-1c", "80", "3de" });
+
 			OnPluginCallBack(json.toJson());
 		}
 		//transform.parent.localRotation = Quaternion.Euler(offset_x.value, offset_y.value, offset_z.value);
