@@ -1,15 +1,14 @@
-
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using System.Linq;
 
 namespace XCharts.Runtime
 {
     public static class FormatterHelper
     {
         public const string PH_NN = "\n";
-        private static Regex s_Regex = new Regex(@"{([a-e|.]\d*)(:\d+(-\d+)?)?(:[c-g|x|p|r]\d*|:0\.#*)?}", RegexOptions.IgnoreCase);
+        private static Regex s_Regex = new Regex(@"{([a-h|.]\d*)(:\d+(-\d+)?)?(:[c-g|x|p|r]\d*|:0\.#*)?}", RegexOptions.IgnoreCase);
         private static Regex s_RegexSub = new Regex(@"(0\.#*)|(\d+-\d+)|(\w+)|(\.)", RegexOptions.IgnoreCase);
         private static Regex s_RegexN = new Regex(@"^\d+", RegexOptions.IgnoreCase);
         private static Regex s_RegexN_N = new Regex(@"\d+-\d+", RegexOptions.IgnoreCase);
@@ -17,11 +16,16 @@ namespace XCharts.Runtime
         private static Regex s_RegexNewLine = new Regex(@"[\\|/]+n|</br>|<br>|<br/>", RegexOptions.IgnoreCase);
         private static Regex s_RegexForAxisLabel = new Regex(@"{value(:[c-g|x|p|r]\d*)?}", RegexOptions.IgnoreCase);
         private static Regex s_RegexSubForAxisLabel = new Regex(@"(value)|([c-g|x|p|r]\d*)", RegexOptions.IgnoreCase);
-        private static Regex s_RegexForSerieLabel = new Regex(@"{[a-e|\.](:[c-g|x|p|r]\d*)?}", RegexOptions.IgnoreCase);
-        private static Regex s_RegexSubForSerieLabel = new Regex(@"(\.)|([a-e])|([c-g|x|p|r]\d*)", RegexOptions.IgnoreCase);
+        private static Regex s_RegexForSerieLabel = new Regex(@"{[a-h|\.]\d*(:[c-g|x|p|r]\d*)?}", RegexOptions.IgnoreCase);
+        private static Regex s_RegexSubForSerieLabel = new Regex(@"(\.)|([a-h]\d*)|([c-g|x|p|r]\d*)", RegexOptions.IgnoreCase);
+
+        public static bool NeedFormat(string content)
+        {
+            return content.IndexOf('{') >= 0;
+        }
 
         /// <summary>
-        /// 替换字符串中的通配符，支持的通配符有{.}、{a}、{b}、{c}、{d}、{e}。
+        /// 替换字符串中的通配符，支持的通配符有{.}、{a}、{b}、{c}、{d}、{e}、{f}、{g}、{h}。
         /// </summary>
         /// <param name="content">要替换的字符串</param>
         /// <param name="dataIndex">选中的数据项serieData索引</param>
@@ -30,10 +34,9 @@ namespace XCharts.Runtime
         /// <param name="series">所有serie</param>
         /// <param name="theme">用来获取指定index的颜色</param>
         /// <param name="category">选中的类目，一般用在折线图和柱状图</param>
-        /// <param name="dataZoom">dataZoom</param>
         /// <returns></returns>
         public static bool ReplaceContent(ref string content, int dataIndex, string numericFormatter, Serie serie,
-            BaseChart chart, DataZoom dataZoom = null)
+            BaseChart chart, string colorName = null)
         {
             var foundDot = false;
             var mc = s_Regex.Matches(content);
@@ -60,16 +63,26 @@ namespace XCharts.Runtime
                     targetIndex = 0;
                 }
                 if (serie == null) continue;
-                if (p == '.')
+                if (p == '.' || p == 'h' || p == 'H')
                 {
-                    var bIndex = targetIndex;
+                    var bIndex = dataIndex;
                     if (argsCount >= 2)
                     {
                         var args1Str = args[1].ToString();
                         if (s_RegexN.IsMatch(args1Str)) bIndex = int.Parse(args1Str);
                     }
-                    content = content.Replace(old, ChartCached.ColorToDotStr(chart.theme.GetColor(bIndex)));
-                    foundDot = true;
+                    var color = string.IsNullOrEmpty(colorName) ?
+                        (Color)chart.GetMarkColor(serie, serie.GetSerieData(bIndex)) :
+                        SeriesHelper.GetNameColor(chart, bIndex, colorName);
+                    if (p == '.')
+                    {
+                        content = content.Replace(old, ChartCached.ColorToDotStr(color));
+                        foundDot = true;
+                    }
+                    else
+                    {
+                        content = content.Replace(old, "#" + ChartCached.ColorToStr(color));
+                    }
                 }
                 else if (p == 'a' || p == 'A')
                 {
@@ -86,21 +99,26 @@ namespace XCharts.Runtime
                         var args1Str = args[1].ToString();
                         if (s_RegexN.IsMatch(args1Str)) bIndex = int.Parse(args1Str);
                     }
-                    var needCategory = (p != 'e' && p != 'E') && (serie is Line || serie is Bar);
+                    var needCategory = (p != 'e' && p != 'E') && serie.defaultColorBy != SerieColorBy.Data;
                     if (needCategory)
                     {
-                        var category = chart.GetTooltipCategory(dataIndex, serie, dataZoom);
+                        var category = chart.GetTooltipCategory(dataIndex, serie);
                         content = content.Replace(old, category);
                     }
                     else
                     {
-                        var serieData = serie.GetSerieData(bIndex, dataZoom);
+                        var serieData = serie.GetSerieData(bIndex);
                         content = content.Replace(old, serieData.name);
                     }
                 }
-                else if (p == 'c' || p == 'C' || p == 'd' || p == 'D')
+                else if (p == 'g' || p == 'G')
+                {
+                    content = content.Replace(old, ChartCached.NumberToStr(serie.dataCount, ""));
+                }
+                else if (p == 'c' || p == 'C' || p == 'd' || p == 'D' || p == 'f' || p == 'f')
                 {
                     var isPercent = p == 'd' || p == 'D';
+                    var isTotal = p == 'f' || p == 'f';
                     var bIndex = dataIndex;
                     var dimensionIndex = -1;
                     if (argsCount >= 2)
@@ -133,14 +151,19 @@ namespace XCharts.Runtime
                     if (dimensionIndex == -1) dimensionIndex = 1;
                     if (numericFormatter == string.Empty)
                     {
-                        numericFormatter = SerieHelper.GetNumericFormatter(serie, serie.GetSerieData(bIndex));
+                        numericFormatter = SerieHelper.GetNumericFormatter(serie, serie.GetSerieData(bIndex), "");
                     }
-                    var value = serie.GetData(bIndex, dimensionIndex, dataZoom);
+                    var value = serie.GetData(bIndex, dimensionIndex);
                     if (isPercent)
                     {
                         var total = serie.GetDataTotal(dimensionIndex, serie.GetSerieData(bIndex));
                         var percent = total == 0 ? 0 : value / serie.yTotal * 100;
                         content = content.Replace(old, ChartCached.FloatToStr(percent, numericFormatter));
+                    }
+                    else if (isTotal)
+                    {
+                        var total = serie.GetDataTotal(dimensionIndex, serie.GetSerieData(bIndex));
+                        content = content.Replace(old, ChartCached.FloatToStr(total, numericFormatter));
                     }
                     else
                     {
@@ -150,6 +173,73 @@ namespace XCharts.Runtime
             }
             content = s_RegexNewLine.Replace(content, PH_NN);
             return foundDot;
+        }
+
+        public static void ReplaceSerieLabelContent(ref string content, string numericFormatter, int dataCount, double value, double total,
+            string serieName, string category, string dataName, Color color, SerieData serieData)
+        {
+            var mc = s_RegexForSerieLabel.Matches(content);
+            foreach (var m in mc)
+            {
+                var old = m.ToString();
+                var args = s_RegexSubForSerieLabel.Matches(old);
+                var argsCount = args.Count;
+                if (argsCount <= 0) continue;
+                var pstr = args[0].ToString();
+                var p = pstr.ElementAt(0);
+                var pIndex = -1;
+                if (pstr.Length > 1)
+                {
+                    int.TryParse(pstr.Substring(1, pstr.Length - 1), out pIndex);
+                }
+                if (argsCount >= 2)
+                {
+                    numericFormatter = args[1].ToString();
+                }
+                if (p == '.')
+                {
+                    content = content.Replace(old, ChartCached.ColorToDotStr(color));
+                }
+                else if (p == 'a' || p == 'A')
+                {
+                    content = content.Replace(old, serieName);
+                }
+                else if (p == 'b' || p == 'B')
+                {
+                    content = content.Replace(old, category);
+                }
+                else if (p == 'e' || p == 'E')
+                {
+                    content = content.Replace(old, dataName);
+                }
+                else if (p == 'd' || p == 'D')
+                {
+                    var rate = pIndex >= 0 && serieData != null ?
+                        (value == 0 ? 0 : serieData.GetData(pIndex) / value * 100) :
+                        (total == 0 ? 0 : value / total * 100);
+                    content = content.Replace(old, ChartCached.NumberToStr(rate, numericFormatter));
+                }
+                else if (p == 'c' || p == 'C')
+                {
+                    if (pIndex >= 0 && serieData != null)
+                        content = content.Replace(old, ChartCached.NumberToStr(serieData.GetData(pIndex), numericFormatter));
+                    else
+                        content = content.Replace(old, ChartCached.NumberToStr(value, numericFormatter));
+                }
+                else if (p == 'f' || p == 'f')
+                {
+                    content = content.Replace(old, ChartCached.NumberToStr(total, numericFormatter));
+                }
+                else if (p == 'g' || p == 'G')
+                {
+                    content = content.Replace(old, ChartCached.NumberToStr(dataCount, numericFormatter));
+                }
+                else if (p == 'h' || p == 'H')
+                {
+                    content = content.Replace(old, "#" + ChartCached.ColorToStr(color));
+                }
+            }
+            content = TrimAndReplaceLine(content);
         }
 
         private static char GetSerieIndex(string strType, ref int index)
@@ -207,48 +297,5 @@ namespace XCharts.Runtime
             content = TrimAndReplaceLine(content);
         }
 
-        public static void ReplaceSerieLabelContent(ref string content, string numericFormatter, double value, double total,
-            string serieName, string category, string dataName, Color color)
-        {
-            var mc = s_RegexForSerieLabel.Matches(content);
-            foreach (var m in mc)
-            {
-                var old = m.ToString();
-                var args = s_RegexSubForSerieLabel.Matches(old);
-                var argsCount = args.Count;
-                if (argsCount <= 0) continue;
-                var p = args[0].ToString().ElementAt(0);
-                if (argsCount >= 2)
-                {
-                    numericFormatter = args[1].ToString();
-                }
-                if (p == '.')
-                {
-                    content = content.Replace(old, ChartCached.ColorToDotStr(color));
-                }
-                else if (p == 'a' || p == 'A')
-                {
-                    content = content.Replace(old, serieName);
-                }
-                else if (p == 'b' || p == 'B')
-                {
-                    content = content.Replace(old, category);
-                }
-                else if (p == 'e' || p == 'E')
-                {
-                    content = content.Replace(old, dataName);
-                }
-                else if (p == 'd' || p == 'D')
-                {
-                    var rate = total == 0 ? 0 : value / total * 100;
-                    content = content.Replace(old, ChartCached.FloatToStr(rate, numericFormatter));
-                }
-                else if (p == 'c' || p == 'C')
-                {
-                    content = content.Replace(old, ChartCached.FloatToStr(value, numericFormatter));
-                }
-            }
-            content = TrimAndReplaceLine(content);
-        }
     }
 }

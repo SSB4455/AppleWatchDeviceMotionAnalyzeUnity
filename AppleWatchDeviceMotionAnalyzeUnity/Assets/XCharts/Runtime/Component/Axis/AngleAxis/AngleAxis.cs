@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -28,6 +27,11 @@ namespace XCharts.Runtime
         public float GetValueAngle(float value)
         {
             return (value + context.startAngle + 360) % 360;
+        }
+
+        public float GetValueAngle(double value)
+        {
+            return (float) (value + context.startAngle + 360) % 360;
         }
 
         public override void SetDefaultValue()

@@ -1,4 +1,3 @@
-
 using System;
 
 namespace XCharts.Runtime
@@ -8,12 +7,22 @@ namespace XCharts.Runtime
     [SerieConvert(typeof(Bar), typeof(Pie))]
     [CoordOptions(typeof(GridCoord), typeof(PolarCoord))]
     [DefaultAnimation(AnimationType.LeftToRight)]
-    [SerieExtraComponent(
+    [SerieComponent(
         typeof(LabelStyle),
         typeof(EndLabelStyle),
         typeof(LineArrow),
         typeof(AreaStyle),
-        typeof(Emphasis))]
+        typeof(EmphasisStyle),
+        typeof(BlurStyle),
+        typeof(SelectStyle))]
+    [SerieDataComponent(
+        typeof(ItemStyle),
+        typeof(LabelStyle),
+        typeof(SerieSymbol),
+        typeof(EmphasisStyle),
+        typeof(BlurStyle),
+        typeof(SelectStyle))]
+    [SerieDataExtraField("m_State", "m_Ignore")]
     public class Line : Serie, INeedSerieContainer
     {
         public int containerIndex { get; internal set; }
@@ -29,7 +38,7 @@ namespace XCharts.Runtime
             return serie;
         }
 
-        public static Line CovertSerie(Serie serie)
+        public static Line ConvertSerie(Serie serie)
         {
             var newSerie = serie.Clone<Line>();
             return newSerie;

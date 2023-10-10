@@ -1,4 +1,3 @@
-
 using System;
 using UnityEngine;
 
@@ -8,10 +7,11 @@ namespace XCharts.Runtime
     public class ChildComponent
     {
         public virtual int index { get; set; }
+
         [NonSerialized] protected bool m_VertsDirty;
         [NonSerialized] protected bool m_ComponentDirty;
         [NonSerialized] protected Painter m_Painter;
-        
+
         /// <summary>
         /// 图表重绘标记。
         /// </summary>
@@ -27,6 +27,28 @@ namespace XCharts.Runtime
         public Painter painter { get { return m_Painter; } set { m_Painter = value; } }
         public Action refreshComponent { get; set; }
         public GameObject gameObject { get; set; }
+
+        public static void ClearVerticesDirty(ChildComponent component)
+        {
+            if (component != null)
+                component.ClearVerticesDirty();
+        }
+
+        public static void ClearComponentDirty(ChildComponent component)
+        {
+            if (component != null)
+                component.ClearComponentDirty();
+        }
+
+        public static bool IsVertsDirty(ChildComponent component)
+        {
+            return component == null?false : component.vertsDirty;
+        }
+
+        public static bool IsComponentDirty(ChildComponent component)
+        {
+            return component == null?false : component.componentDirty;
+        }
 
         public virtual void SetVerticesDirty()
         {

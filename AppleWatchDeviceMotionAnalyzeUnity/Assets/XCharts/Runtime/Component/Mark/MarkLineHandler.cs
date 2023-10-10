@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,7 +19,7 @@ namespace XCharts.Runtime
             InitMarkLine(component);
         }
 
-        public override void DrawTop(VertexHelper vh)
+        public override void DrawUpper(VertexHelper vh)
         {
             DrawMarkLine(vh, component);
         }
@@ -36,7 +35,9 @@ namespace XCharts.Runtime
                 {
                     if (data.runtimeLabel != null)
                     {
-                        data.runtimeLabel.SetPosition(MarkLineHelper.GetLabelPosition(data));
+                        var pos = MarkLineHelper.GetLabelPosition(data);
+                        data.runtimeLabel.SetActive(data.label.show && pos != Vector3.zero);
+                        data.runtimeLabel.SetPosition(pos);
                         data.runtimeLabel.SetText(MarkLineHelper.GetFormatterContent(serie, data));
                     }
                 }
@@ -69,18 +70,17 @@ namespace XCharts.Runtime
 
         private void InitMarkLineLabel(Serie serie, MarkLineData data, Color serieColor)
         {
-            data.painter = chart.m_PainterTop;
-            data.refreshComponent = delegate ()
+            data.painter = chart.m_PainterUpper;
+            data.refreshComponent = delegate()
             {
                 var textName = string.Format("markLine_{0}_{1}", serie.index, data.index);
                 var content = MarkLineHelper.GetFormatterContent(serie, data);
                 var label = ChartHelper.AddChartLabel(textName, m_MarkLineLabelRoot.transform, data.label, chart.theme.axis,
                     content, Color.clear, TextAnchor.MiddleCenter);
-                label.SetActive(data.label.show);
-
+                var pos = MarkLineHelper.GetLabelPosition(data);
                 label.SetIconActive(false);
-                label.SetActive(data.label.show);
-                label.SetPosition(MarkLineHelper.GetLabelPosition(data));
+                label.SetActive(data.label.show && pos != Vector3.zero);
+                label.SetPosition(pos);
                 data.runtimeLabel = label;
             };
             data.refreshComponent();
@@ -93,7 +93,7 @@ namespace XCharts.Runtime
             if (!serie.show || !markLine.show) return;
             if (markLine.data.Count == 0) return;
             var yAxis = chart.GetChartComponent<YAxis>(serie.yAxisIndex);
-            var xAxis = chart.GetChartComponent<XAxis>(serie.yAxisIndex);
+            var xAxis = chart.GetChartComponent<XAxis>(serie.xAxisIndex);
             var grid = chart.GetChartComponent<GridCoord>(xAxis.gridIndex);
             var dataZoom = chart.GetDataZoomOfAxis(xAxis);
             var animation = markLine.animation;
@@ -101,7 +101,7 @@ namespace XCharts.Runtime
             var sp = Vector3.zero;
             var ep = Vector3.zero;
             var colorIndex = chart.GetLegendRealShowNameIndex(serie.serieName);
-            var serieColor = SerieHelper.GetLineColor(serie, null, chart.theme, colorIndex, false);
+            var serieColor = SerieHelper.GetLineColor(serie, null, chart.theme, colorIndex, SerieState.Normal);
             animation.InitProgress(0, 1f);
             ResetTempMarkLineGroupData(markLine);
             if (m_TempGroupData.Count > 0)
@@ -242,9 +242,10 @@ namespace XCharts.Runtime
         private void DrawMarkLineSymbol(VertexHelper vh, SymbolStyle symbol, Serie serie, GridCoord grid, ThemeStyle theme,
             Vector3 pos, Vector3 startPos, Color32 lineColor)
         {
-            var tickness = SerieHelper.GetSymbolBorder(serie, null, theme, false);
-            var borderColor = SerieHelper.GetSymbolBorderColor(serie, null, theme, false);
-            var cornerRadius = SerieHelper.GetSymbolCornerRadius(serie, null, false);
+            float tickness = 0f;
+            float[] cornerRadius = null;
+            Color32 borderColor;
+            SerieHelper.GetSymbolInfo(out borderColor, out tickness, out cornerRadius, serie, null, chart.theme);
             chart.DrawClipSymbol(vh, symbol.type, symbol.size, tickness, pos, lineColor, lineColor,
                 ColorUtil.clearColor32, borderColor, symbol.gap, true, cornerRadius, grid, startPos);
         }

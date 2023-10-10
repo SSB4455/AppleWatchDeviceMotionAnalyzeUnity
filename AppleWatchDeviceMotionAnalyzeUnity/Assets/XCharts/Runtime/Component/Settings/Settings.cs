@@ -1,6 +1,5 @@
-
-using UnityEngine;
 using System;
+using UnityEngine;
 
 namespace XCharts.Runtime
 {
@@ -12,17 +11,19 @@ namespace XCharts.Runtime
     public class Settings : MainComponent
     {
         [SerializeField] private bool m_Show = true;
-        [SerializeField] [Range(1, 20)] protected int m_MaxPainter = 10;
+        [SerializeField][Range(1, 20)] protected int m_MaxPainter = 10;
         [SerializeField] protected bool m_ReversePainter = false;
         [SerializeField] protected Material m_BasePainterMaterial;
         [SerializeField] protected Material m_SeriePainterMaterial;
+        [SerializeField] protected Material m_UpperPainterMaterial;
         [SerializeField] protected Material m_TopPainterMaterial;
-        [SerializeField] [Range(1, 10)] protected float m_LineSmoothStyle = 3f;
-        [SerializeField] [Range(1f, 20)] protected float m_LineSmoothness = 2f;
-        [SerializeField] [Range(0.5f, 20)] protected float m_LineSegmentDistance = 3f;
-        [SerializeField] [Range(1, 10)] protected float m_CicleSmoothness = 2f;
+        [SerializeField][Range(1, 10)] protected float m_LineSmoothStyle = 2.5f;
+        [SerializeField][Range(1f, 20)] protected float m_LineSmoothness = 2f;
+        [SerializeField][Range(0.5f, 20)] protected float m_LineSegmentDistance = 3f;
+        [SerializeField][Range(1, 10)] protected float m_CicleSmoothness = 2f;
         [SerializeField] protected float m_LegendIconLineWidth = 2;
         [SerializeField] private float[] m_LegendIconCornerRadius = new float[] { 0.25f, 0.25f, 0.25f, 0.25f };
+        [SerializeField][Since("v3.1.0")] protected float m_AxisMaxSplitNumber = 50;
 
         public bool show { get { return m_Show; } }
         /// <summary>
@@ -59,12 +60,20 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetClass(ref m_SeriePainterMaterial, value)) SetComponentDirty(); }
         }
         /// <summary>
-        /// Top Pointer 材质球，设置后会影响Tooltip等。
+        /// Top Pointer 材质球。
         /// </summary>
         public Material topPainterMaterial
         {
             get { return m_TopPainterMaterial; }
             set { if (PropertyUtil.SetClass(ref m_TopPainterMaterial, value)) SetComponentDirty(); }
+        }
+        /// <summary>
+        /// Upper Pointer 材质球。
+        /// </summary>
+        public Material upperPainterMaterial
+        {
+            get { return m_UpperPainterMaterial; }
+            set { if (PropertyUtil.SetClass(ref m_UpperPainterMaterial, value)) SetComponentDirty(); }
         }
         /// <summary>
         /// Curve smoothing factor. By adjusting the smoothing coefficient, the curvature of the curve can be changed, 
@@ -129,12 +138,23 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetClass(ref m_LegendIconCornerRadius, value, true)) SetVerticesDirty(); }
         }
 
+        /// <summary>
+        /// the max splitnumber of axis.
+        /// |坐标轴最大分隔段数。段数过大时可能会生成较多的label节点。
+        /// </summary>
+        public float axisMaxSplitNumber
+        {
+            get { return m_AxisMaxSplitNumber; }
+            set { if (PropertyUtil.SetStruct(ref m_AxisMaxSplitNumber, value)) SetVerticesDirty(); }
+        }
+
         public void Copy(Settings settings)
         {
             m_ReversePainter = settings.reversePainter;
             m_MaxPainter = settings.maxPainter;
             m_BasePainterMaterial = settings.basePainterMaterial;
             m_SeriePainterMaterial = settings.seriePainterMaterial;
+            m_UpperPainterMaterial = settings.upperPainterMaterial;
             m_TopPainterMaterial = settings.topPainterMaterial;
             m_LineSmoothStyle = settings.lineSmoothStyle;
             m_LineSmoothness = settings.lineSmoothness;
@@ -156,13 +176,13 @@ namespace XCharts.Runtime
                 return new Settings()
                 {
                     m_ReversePainter = false,
-                    m_MaxPainter = XCSettings.maxPainter,
-                    m_LineSmoothStyle = XCSettings.lineSmoothStyle,
-                    m_LineSmoothness = XCSettings.lineSmoothness,
-                    m_LineSegmentDistance = XCSettings.lineSegmentDistance,
-                    m_CicleSmoothness = XCSettings.cicleSmoothness,
-                    m_LegendIconLineWidth = 2,
-                    m_LegendIconCornerRadius = new float[] { 0.25f, 0.25f, 0.25f, 0.25f }
+                        m_MaxPainter = XCSettings.maxPainter,
+                        m_LineSmoothStyle = XCSettings.lineSmoothStyle,
+                        m_LineSmoothness = XCSettings.lineSmoothness,
+                        m_LineSegmentDistance = XCSettings.lineSegmentDistance,
+                        m_CicleSmoothness = XCSettings.cicleSmoothness,
+                        m_LegendIconLineWidth = 2,
+                        m_LegendIconCornerRadius = new float[] { 0.25f, 0.25f, 0.25f, 0.25f }
                 };
             }
         }

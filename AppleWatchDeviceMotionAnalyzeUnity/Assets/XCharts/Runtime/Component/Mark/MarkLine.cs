@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -28,7 +27,6 @@ namespace XCharts.Runtime
         Median
     }
 
-
     /// <summary>
     /// Use a line in the chart to illustrate.
     /// |图表标线。
@@ -51,6 +49,10 @@ namespace XCharts.Runtime
             get { return m_Show; }
             set { if (PropertyUtil.SetStruct(ref m_Show, value)) SetVerticesDirty(); }
         }
+        /// <summary>
+        /// The serie index of markLine.
+        /// |标线影响的Serie索引。
+        /// </summary>
         public int serieIndex
         {
             get { return m_SerieIndex; }
@@ -86,11 +88,13 @@ namespace XCharts.Runtime
             item.name = "average";
             item.type = MarkLineType.Average;
             item.lineStyle.type = LineStyle.Type.Dashed;
-            item.lineStyle.color = Color.blue;
+            item.lineStyle.color = Color.clear;
             item.startSymbol.show = true;
             item.startSymbol.type = SymbolType.Circle;
+            item.startSymbol.size = 4;
             item.endSymbol.show = true;
             item.endSymbol.type = SymbolType.Arrow;
+            item.endSymbol.size = 5;
             item.label.show = true;
             item.label.numericFormatter = "f1";
             item.label.formatter = "{c}";
@@ -99,7 +103,7 @@ namespace XCharts.Runtime
     }
     /// <summary>
     /// Data of marking line. 
-    /// 图表标线的数据。
+    /// |图表标线的数据。
     /// </summary>
     [System.Serializable]
     public class MarkLineData : ChildComponent

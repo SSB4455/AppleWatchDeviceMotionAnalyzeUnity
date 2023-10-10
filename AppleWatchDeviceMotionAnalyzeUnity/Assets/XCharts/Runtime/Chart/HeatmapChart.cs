@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,6 +7,7 @@ namespace XCharts.Runtime
     [ExecuteInEditMode]
     [RequireComponent(typeof(RectTransform))]
     [DisallowMultipleComponent]
+    [HelpURL("https://xcharts-team.github.io/docs/configuration")]
     public class HeatmapChart : BaseChart
     {
         protected override void DefaultChart()
@@ -16,42 +16,48 @@ namespace XCharts.Runtime
             tooltip.type = Tooltip.Type.None;
             tooltip.trigger = Tooltip.Trigger.Axis;
 
-            var grid = GetOrAddChartComponent<GridCoord>();
+            var grid = EnsureChartComponent<GridCoord>();
             grid.left = 0.12f;
 
-            var xAxis = GetOrAddChartComponent<XAxis>();
+            var xAxis = EnsureChartComponent<XAxis>();
             xAxis.type = Axis.AxisType.Category;
             xAxis.boundaryGap = true;
             xAxis.splitNumber = 10;
 
-            var yAxis = GetOrAddChartComponent<YAxis>();
+            var yAxis = EnsureChartComponent<YAxis>();
             yAxis.type = Axis.AxisType.Category;
             yAxis.boundaryGap = true;
             yAxis.splitNumber = 10;
             RemoveData();
 
             var heatmapGridWid = 10f;
-            int xSplitNumber = (int)(grid.context.width / heatmapGridWid);
-            int ySplitNumber = (int)(grid.context.height / heatmapGridWid);
+            int xSplitNumber = (int) (grid.context.width / heatmapGridWid);
+            int ySplitNumber = (int) (grid.context.height / heatmapGridWid);
 
             Heatmap.AddDefaultSerie(this, GenerateDefaultSerieName());
 
-            var visualMap = GetOrAddChartComponent<VisualMap>();
-            visualMap.max = 10;
-            visualMap.range[0] = 0f;
-            visualMap.range[1] = 10f;
+            var visualMap = EnsureChartComponent<VisualMap>();
+            visualMap.autoMinMax = true;
             visualMap.orient = Orient.Vertical;
             visualMap.calculable = true;
             visualMap.location.align = Location.Align.BottomLeft;
             visualMap.location.bottom = 100;
             visualMap.location.left = 30;
-            var colors = new List<string>{"#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8", "#ffffbf",
-                "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"};
-            visualMap.inRange.Clear();
-            foreach (var str in colors)
+            var colors = new List<string>
             {
-                visualMap.inRange.Add(ThemeStyle.GetColor(str));
-            }
+                "#313695",
+                "#4575b4",
+                "#74add1",
+                "#abd9e9",
+                "#e0f3f8",
+                "#ffffbf",
+                "#fee090",
+                "#fdae61",
+                "#f46d43",
+                "#d73027",
+                "#a50026"
+            };
+            visualMap.AddColors(colors);
             for (int i = 0; i < xSplitNumber; i++)
             {
                 xAxis.data.Add((i + 1).ToString());
@@ -64,10 +70,7 @@ namespace XCharts.Runtime
             {
                 for (int j = 0; j < ySplitNumber; j++)
                 {
-                    var value = 0f;
-                    var rate = Random.Range(0, 101);
-                    if (rate > 70) value = Random.Range(8f, 10f);
-                    else value = Random.Range(1f, 8f);
+                    var value = Random.Range(0, 150);
                     var list = new List<double> { i, j, value };
                     AddData(0, list);
                 }

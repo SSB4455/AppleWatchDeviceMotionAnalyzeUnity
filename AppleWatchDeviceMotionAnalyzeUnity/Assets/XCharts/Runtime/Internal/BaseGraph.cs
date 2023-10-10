@@ -1,8 +1,10 @@
-﻿
+﻿using System;
 using UnityEngine;
-using UnityEngine.UI;
-using System;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
+#if INPUT_SYSTEM_ENABLED
+using Input = XCharts.Runtime.InputHelper;
+#endif
 
 namespace XCharts.Runtime
 {
@@ -11,9 +13,7 @@ namespace XCharts.Runtime
         IPointerEnterHandler, IPointerExitHandler, IBeginDragHandler, IPointerClickHandler,
         IDragHandler, IEndDragHandler, IScrollHandler
     {
-
         [SerializeField] protected bool m_EnableTextMeshPro = false;
-        [SerializeField] protected DebugInfo m_DebugInfo = new DebugInfo();
 
         protected Painter m_Painter;
         protected int m_SiblingIndex;
@@ -35,6 +35,7 @@ namespace XCharts.Runtime
         protected bool m_PainerDirty = false;
         protected bool m_IsOnValidate = false;
         protected Vector3 m_LastLocalPosition;
+        protected PointerEventData m_PointerEventData;
 
         protected Action<PointerEventData, BaseGraph> m_OnPointerClick;
         protected Action<PointerEventData, BaseGraph> m_OnPointerDown;
@@ -46,11 +47,8 @@ namespace XCharts.Runtime
         protected Action<PointerEventData, BaseGraph> m_OnEndDrag;
         protected Action<PointerEventData, BaseGraph> m_OnScroll;
 
-        protected Vector2 graphAnchorMax { get { return m_GraphMinAnchor; } }
-        protected Vector2 graphAnchorMin { get { return m_GraphMaxAnchor; } }
-        protected Vector2 graphPivot { get { return m_GraphPivot; } }
-        public HideFlags chartHideFlags { get { return m_DebugInfo.showAllChartObject ? HideFlags.None : HideFlags.HideInHierarchy; } }
-        public DebugInfo debug { get { return m_DebugInfo; } }
+        public virtual HideFlags chartHideFlags { get { return HideFlags.None; } }
+
         private ScrollRect m_ScrollRect;
 
         public Painter painter { get { return m_Painter; } }
@@ -81,9 +79,9 @@ namespace XCharts.Runtime
             if (m_IsOnValidate)
             {
                 m_IsOnValidate = false;
-                m_RefreshChart = true;
                 CheckTextMeshPro();
                 InitComponent();
+                RefreshGraph();
             }
             else
             {
@@ -117,7 +115,7 @@ namespace XCharts.Runtime
         private void CheckTextMeshPro()
         {
 #if dUI_TextMeshPro
-            var enableTextMeshPro = true;
+                var enableTextMeshPro = true;
 #else
             var enableTextMeshPro = false;
 #endif
@@ -128,12 +126,8 @@ namespace XCharts.Runtime
             }
         }
 
-
-
 #if UNITY_EDITOR
-        protected override void Reset()
-        {
-        }
+        protected override void Reset() { }
 
         protected override void OnValidate()
         {
@@ -157,7 +151,7 @@ namespace XCharts.Runtime
         protected virtual void InitPainter()
         {
             m_Painter = ChartHelper.AddPainterObject("painter_b", transform, m_GraphMinAnchor,
-                    m_GraphMaxAnchor, m_GraphPivot, new Vector2(m_GraphWidth, m_GraphHeight), chartHideFlags, 1);
+                m_GraphMaxAnchor, m_GraphPivot, new Vector2(m_GraphWidth, m_GraphHeight), chartHideFlags, 1);
             m_Painter.type = Painter.Type.Base;
             m_Painter.onPopulateMesh = OnDrawPainterBase;
             m_Painter.transform.SetSiblingIndex(0);
@@ -173,11 +167,11 @@ namespace XCharts.Runtime
                 Awake();
             }
 
-            if (m_GraphWidth != currWidth
-                || m_GraphHeight != currHeight
-                || m_GraphMinAnchor != rectTransform.anchorMin
-                || m_GraphMaxAnchor != rectTransform.anchorMax
-                || m_GraphAnchoredPosition != rectTransform.anchoredPosition)
+            if (m_GraphWidth != currWidth ||
+                m_GraphHeight != currHeight ||
+                m_GraphMinAnchor != rectTransform.anchorMin ||
+                m_GraphMaxAnchor != rectTransform.anchorMax ||
+                m_GraphAnchoredPosition != rectTransform.anchoredPosition)
             {
                 UpdateSize();
             }
@@ -199,7 +193,7 @@ namespace XCharts.Runtime
             m_GraphAnchoredPosition = rectTransform.anchoredPosition;
 
             rectTransform.pivot = LayerHelper.ResetChartPositionAndPivot(m_GraphMinAnchor, m_GraphMaxAnchor,
-               m_GraphWidth, m_GraphHeight, ref m_GraphX, ref m_GraphY);
+                m_GraphWidth, m_GraphHeight, ref m_GraphX, ref m_GraphY);
             m_GraphPivot = rectTransform.pivot;
 
             m_GraphRect.x = m_GraphX;
@@ -216,8 +210,9 @@ namespace XCharts.Runtime
         {
             if (!isPointerInChart) return;
             if (canvas == null) return;
+            Vector2 mousePos = m_PointerEventData.position;
             Vector2 local;
-            if (!ScreenPointToChartPoint(Input.mousePosition, out local))
+            if (!ScreenPointToChartPoint(mousePos, out local))
             {
                 pointerPos = Vector2.zero;
             }
@@ -234,7 +229,7 @@ namespace XCharts.Runtime
 
         protected virtual void CheckRefreshChart()
         {
-            if (m_RefreshChart)
+            if (m_RefreshChart && m_Painter != null)
             {
                 m_Painter.Refresh();
                 m_RefreshChart = false;
@@ -243,6 +238,7 @@ namespace XCharts.Runtime
 
         protected virtual void CheckRefreshPainter()
         {
+            if (m_Painter == null) return;
             m_Painter.CheckRefresh();
         }
 
@@ -257,18 +253,14 @@ namespace XCharts.Runtime
             m_RefreshChart = true;
         }
 
-        protected virtual void OnLocalPositionChanged()
-        {
-        }
+        protected virtual void OnLocalPositionChanged() { }
 
         protected virtual void OnDrawPainterBase(VertexHelper vh, Painter painter)
         {
             DrawPainterBase(vh);
         }
 
-        protected virtual void DrawPainterBase(VertexHelper vh)
-        {
-        }
+        protected virtual void DrawPainterBase(VertexHelper vh) { }
 
         public virtual void OnPointerClick(PointerEventData eventData)
         {
@@ -287,13 +279,13 @@ namespace XCharts.Runtime
 
         public virtual void OnPointerEnter(PointerEventData eventData)
         {
-            isPointerInChart = true;
+            m_PointerEventData = eventData;
             if (m_OnPointerEnter != null) m_OnPointerEnter(eventData, this);
         }
 
         public virtual void OnPointerExit(PointerEventData eventData)
         {
-            isPointerInChart = false;
+            m_PointerEventData = null;
             if (m_OnPointerExit != null) m_OnPointerExit(eventData, this);
         }
 

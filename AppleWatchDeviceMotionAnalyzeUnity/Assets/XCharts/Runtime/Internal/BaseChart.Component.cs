@@ -1,7 +1,6 @@
-﻿
-using UnityEngine;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace XCharts.Runtime
 {
@@ -73,6 +72,7 @@ namespace XCharts.Runtime
             CreateComponentHandler(component);
 #if UNITY_EDITOR && UNITY_2019_1_OR_NEWER
             UnityEditor.EditorUtility.SetDirty(this);
+            OnBeforeSerialize();
 #endif
             return component;
         }
@@ -89,6 +89,7 @@ namespace XCharts.Runtime
             }
             component.index = list.Count;
             list.Add(component);
+            m_Components.Sort((a, b) => { return a.GetType().Name.CompareTo(b.GetType().Name); });
         }
 
         private void CheckAddRequireChartComponent(Type type)
@@ -128,13 +129,13 @@ namespace XCharts.Runtime
         }
 
         public bool RemoveChartComponent<T>(int index = 0)
-            where T : MainComponent
+        where T : MainComponent
         {
             return RemoveChartComponent(typeof(T), index);
         }
 
         public int RemoveChartComponents<T>()
-            where T : MainComponent
+        where T : MainComponent
         {
             return RemoveChartComponents(typeof(T));
         }
@@ -180,6 +181,10 @@ namespace XCharts.Runtime
             {
                 if (component.gameObject != null)
                     ChartHelper.SetActive(component.gameObject, false);
+#if UNITY_EDITOR && UNITY_2019_1_OR_NEWER
+                UnityEditor.EditorUtility.SetDirty(this);
+                OnBeforeSerialize();
+#endif
                 InitComponentHandlers();
                 RefreshChart();
                 return true;
@@ -196,7 +201,7 @@ namespace XCharts.Runtime
         }
 
         public bool HasChartComponent<T>()
-            where T : MainComponent
+        where T : MainComponent
         {
             return HasChartComponent(typeof(T));
         }
@@ -222,9 +227,9 @@ namespace XCharts.Runtime
             return GetChartComponentNum(typeof(T));
         }
 
+        private static List<MainComponent> list;
         public int GetChartComponentNum(Type type)
         {
-            List<MainComponent> list;
             if (m_ComponentMaps.TryGetValue(type, out list))
                 return list.Count;
             else
@@ -246,6 +251,7 @@ namespace XCharts.Runtime
             return m_ComponentMaps[typeof(T)];
         }
 
+        [Obsolete("'GetOrAddChartComponent' is obsolete, Use 'EnsureChartComponent' instead.")]
         public T GetOrAddChartComponent<T>() where T : MainComponent
         {
             var component = GetChartComponent<T>();
@@ -255,8 +261,25 @@ namespace XCharts.Runtime
                 return component;
         }
 
+        /// <summary>
+        /// Ensure the chart has the component, if not, add it. 
+        /// Note: it may fail to add.
+        /// |确保图表有该组件，如果没有则添加。注意：有可能添加不成功。
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>component, or null if add failed.</returns>
+        [Since("v3.6.0")]
+        public T EnsureChartComponent<T>() where T : MainComponent
+        {
+            var component = GetChartComponent<T>();
+            if (component == null)
+                return AddChartComponent<T>();
+            else
+                return component;
+        }
+
         public bool TryGetChartComponent<T>(out T component, int index = 0)
-            where T : MainComponent
+        where T : MainComponent
         {
             component = null;
             foreach (var com in m_Components)
@@ -350,6 +373,22 @@ namespace XCharts.Runtime
             }
         }
 
+        public DataZoom GetXDataZoomOfSerie(Serie serie)
+        {
+            if (serie == null) return null;
+            foreach (var component in m_Components)
+            {
+                if (component is DataZoom)
+                {
+                    var dataZoom = component as DataZoom;
+                    if (!dataZoom.enable) continue;
+                    if (dataZoom.IsContainsXAxis(serie.xAxisIndex))
+                        return dataZoom;
+                }
+            }
+            return null;
+        }
+
         /// <summary>
         /// reutrn true when all the show axis is `Value` type.
         /// |纯数值坐标轴（数值轴或对数轴）。
@@ -423,6 +462,29 @@ namespace XCharts.Runtime
                 return xAxis.GetData((int)xAxis.context.pointerValue, dataZoom);
             }
             return null;
+        }
+
+        internal bool GetSerieGridCoordAxis(Serie serie, out Axis axis, out Axis relativedAxis)
+        {
+            var yAxis = GetChartComponent<YAxis>(serie.yAxisIndex);
+            if (yAxis == null)
+            {
+                axis = null;
+                relativedAxis = null;
+                return false;
+            }
+            var isY = yAxis.IsCategory();
+            if (isY)
+            {
+                axis = yAxis;
+                relativedAxis = GetChartComponent<XAxis>(serie.xAxisIndex);
+            }
+            else
+            {
+                axis = GetChartComponent<XAxis>(serie.xAxisIndex);
+                relativedAxis = yAxis;
+            }
+            return isY;
         }
     }
 }

@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -27,10 +26,16 @@ namespace XCharts.Runtime
         /// </summary>
         public int pointerItemDataIndex = -1;
         /// <summary>
+        /// 鼠标当前指示的数据项维度
+        /// </summary>
+        public int pointerItemDataDimension = 1;
+        /// <summary>
         /// 鼠标所在轴线上的数据项索引（可能有多个）
         /// </summary>
         public List<int> pointerAxisDataIndexs = new List<int>();
         public bool isTriggerByAxis = false;
+        public int dataZoomStartIndex = 0;
+        public int dataZoomStartIndexOffset = 0;
 
         /// <summary>
         /// 中心点
@@ -84,6 +89,10 @@ namespace XCharts.Runtime
         /// </summary>
         public int vertCount;
         /// <summary>
+        /// theme的颜色索引
+        /// </summary>
+        public int colorIndex;
+        /// <summary>
         /// 数据对应的位置坐标。
         /// </summary>
         public List<Vector3> dataPoints = new List<Vector3>();
@@ -92,18 +101,19 @@ namespace XCharts.Runtime
         /// </summary>
         public List<bool> dataIgnores = new List<bool>();
         /// <summary>
+        /// 数据对应的index索引。dataIndexs 和 dataPoints 一一对应。
+        /// </summary>
+        public List<int> dataIndexs = new List<int>();
+        /// <summary>
         /// 排序后的数据
         /// </summary>
         public List<SerieData> sortedData = new List<SerieData>();
         public List<SerieData> rootData = new List<SerieData>();
         /// <summary>
-        /// theme的颜色索引
-        /// </summary>
-        public int colorIndex;
-        /// <summary>
         /// 绘制点
         /// </summary>
         public List<PointInfo> drawPoints = new List<PointInfo>();
         public SerieParams param = new SerieParams();
+        public ChartLabel titleObject { get; set; }
     }
 }

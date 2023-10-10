@@ -1,4 +1,3 @@
-﻿
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -20,12 +19,12 @@ namespace XCharts.Runtime
         {
             /// <summary>
             /// Numerical axis, suitable for continuous data.
-            /// ||数值轴。适用于连续数据。
+            /// |数值轴。适用于连续数据。
             /// </summary>
             Value,
             /// <summary>
             /// Category axis, suitable for discrete category data. Data should only be set via data for this type.
-            /// ||类目轴。适用于离散的类目数据，为该类型时必须通过 data 设置类目数据。
+            /// |类目轴。适用于离散的类目数据，为该类型时必须通过 data 设置类目数据。serie的数据第0维数据对应坐标轴data的index。
             /// </summary>
             Category,
             /// <summary>
@@ -60,7 +59,12 @@ namespace XCharts.Runtime
             /// Customize the minimum and maximum.
             /// |自定义最小值最大值。
             /// </summary>
-            Custom
+            Custom,
+            /// <summary>
+            /// [since("v3.7.0")]minimum - maximum, automatically calculate the appropriate values.
+            /// |[since("v3.7.0")]最小值-最大值。自动计算合适的值。
+            /// </summary>
+            MinMaxAuto,
         }
         /// <summary>
         /// the position of axis in grid.
@@ -75,12 +79,12 @@ namespace XCharts.Runtime
         }
 
         [SerializeField] protected bool m_Show = true;
-        [SerializeField] protected AxisType m_Type;
-        [SerializeField] protected AxisMinMaxType m_MinMaxType;
+        [SerializeField] protected Axis.AxisType m_Type;
+        [SerializeField] protected Axis.AxisMinMaxType m_MinMaxType;
         [SerializeField] protected int m_GridIndex;
         [SerializeField] protected int m_PolarIndex;
         [SerializeField] protected int m_ParallelIndex;
-        [SerializeField] protected AxisPosition m_Position;
+        [SerializeField] protected Axis.AxisPosition m_Position;
         [SerializeField] protected float m_Offset;
         [SerializeField] protected double m_Min;
         [SerializeField] protected double m_Max;
@@ -90,7 +94,7 @@ namespace XCharts.Runtime
         [SerializeField] protected int m_MaxCache = 0;
         [SerializeField] protected float m_LogBase = 10;
         [SerializeField] protected bool m_LogBaseE = false;
-        [SerializeField] protected int m_CeilRate = 0;
+        [SerializeField] protected double m_CeilRate = 0;
         [SerializeField] protected bool m_Inverse = false;
         [SerializeField] private bool m_Clockwise = true;
         [SerializeField] private bool m_InsertDataToHead;
@@ -102,6 +106,9 @@ namespace XCharts.Runtime
         [SerializeField] protected AxisLabel m_AxisLabel = AxisLabel.defaultAxisLabel;
         [SerializeField] protected AxisSplitLine m_SplitLine = AxisSplitLine.defaultSplitLine;
         [SerializeField] protected AxisSplitArea m_SplitArea = AxisSplitArea.defaultSplitArea;
+        [SerializeField][Since("v3.2.0")] protected AxisMinorTick m_MinorTick = AxisMinorTick.defaultMinorTick;
+        [SerializeField][Since("v3.2.0")] protected AxisMinorSplitLine m_MinorSplitLine = AxisMinorSplitLine.defaultMinorSplitLine;
+        [SerializeField][Since("v3.4.0")] protected LabelStyle m_IndicatorLabel = new LabelStyle() { numericFormatter = "f2" };
 
         public AxisContext context = new AxisContext();
 
@@ -258,7 +265,7 @@ namespace XCharts.Runtime
         /// The ratio of maximum and minimum values rounded upward. The default is 0, which is automatically calculated.
         /// |最大最小值向上取整的倍率。默认为0时自动计算。
         /// </summary>
-        public int ceilRate
+        public double ceilRate
         {
             get { return m_CeilRate; }
             set { if (PropertyUtil.SetStruct(ref m_CeilRate, value < 0 ? 0 : value)) SetAllDirty(); }
@@ -301,7 +308,7 @@ namespace XCharts.Runtime
         /// <summary>
         /// axis Line.
         /// |坐标轴轴线。
-        /// /// </summary>
+        /// </summary>
         public AxisLine axisLine
         {
             get { return m_AxisLine; }
@@ -353,6 +360,33 @@ namespace XCharts.Runtime
             set { if (value != null) { m_SplitArea = value; SetVerticesDirty(); } }
         }
         /// <summary>
+        /// axis minor tick.
+        /// |坐标轴次刻度。
+        /// </summary>
+        public AxisMinorTick minorTick
+        {
+            get { return m_MinorTick; }
+            set { if (value != null) { m_MinorTick = value; SetVerticesDirty(); } }
+        }
+        /// <summary>
+        /// axis minor split line.
+        /// |坐标轴次分割线。
+        /// </summary>
+        public AxisMinorSplitLine minorSplitLine
+        {
+            get { return m_MinorSplitLine; }
+            set { if (value != null) { m_MinorSplitLine = value; SetVerticesDirty(); } }
+        }
+        /// <summary>
+        /// Style of axis tooltip indicator label. 
+        /// |指示器文本的样式。Tooltip为Cross时使用。
+        /// </summary>
+        public LabelStyle indicatorLabel
+        {
+            get { return m_IndicatorLabel; }
+            set { if (value != null) { m_IndicatorLabel = value; SetComponentDirty(); } }
+        }
+        /// <summary>
         /// Whether to add new data at the head or at the end of the list.
         /// |添加新数据时是在列表的头部还是尾部加入。
         /// </summary>
@@ -366,11 +400,13 @@ namespace XCharts.Runtime
         {
             get
             {
-                return m_VertsDirty
-                    || axisLine.anyDirty
-                    || axisTick.anyDirty
-                    || splitLine.anyDirty
-                    || splitArea.anyDirty;
+                return m_VertsDirty ||
+                    axisLine.anyDirty ||
+                    axisTick.anyDirty ||
+                    splitLine.anyDirty ||
+                    splitArea.anyDirty ||
+                    minorTick.anyDirty ||
+                    minorSplitLine.anyDirty;
             }
         }
 
@@ -378,9 +414,10 @@ namespace XCharts.Runtime
         {
             get
             {
-                return m_ComponentDirty
-                    || axisName.anyDirty
-                    || axisLabel.anyDirty;
+                return m_ComponentDirty ||
+                    axisName.anyDirty ||
+                    axisLabel.anyDirty ||
+                    indicatorLabel.anyDirty;
             }
         }
 
@@ -389,15 +426,20 @@ namespace XCharts.Runtime
             base.ClearComponentDirty();
             axisName.ClearComponentDirty();
             axisLabel.ClearComponentDirty();
+            indicatorLabel.ClearComponentDirty();
         }
 
         public override void ClearVerticesDirty()
         {
             base.ClearVerticesDirty();
+            axisLabel.ClearVerticesDirty();
             axisLine.ClearVerticesDirty();
             axisTick.ClearVerticesDirty();
             splitLine.ClearVerticesDirty();
             splitArea.ClearVerticesDirty();
+            minorTick.ClearVerticesDirty();
+            minorSplitLine.ClearVerticesDirty();
+            indicatorLabel.ClearComponentDirty();
         }
 
         public override void SetComponentDirty()
@@ -429,6 +471,9 @@ namespace XCharts.Runtime
             axis.axisLabel = axisLabel.Clone();
             axis.splitLine = splitLine.Clone();
             axis.splitArea = splitArea.Clone();
+            axis.minorTick = minorTick.Clone();
+            axis.minorSplitLine = minorSplitLine.Clone();
+            axis.indicatorLabel = indicatorLabel.Clone();
             axis.icons = new List<Sprite>();
             axis.data = new List<string>();
             ChartHelper.CopyList(axis.data, data);
@@ -457,6 +502,9 @@ namespace XCharts.Runtime
             axisLabel.Copy(axis.axisLabel);
             splitLine.Copy(axis.splitLine);
             splitArea.Copy(axis.splitArea);
+            minorTick.Copy(axis.minorTick);
+            minorSplitLine.Copy(axis.minorSplitLine);
+            indicatorLabel.Copy(axis.indicatorLabel);
             ChartHelper.CopyList(data, axis.data);
             ChartHelper.CopyList<Sprite>(icons, axis.icons);
         }
@@ -525,6 +573,15 @@ namespace XCharts.Runtime
         public bool IsBottom()
         {
             return m_Position == AxisPosition.Bottom;
+        }
+
+        public bool IsNeedShowLabel(int index, int total = 0)
+        {
+            if (total == 0)
+            {
+                total = context.labelValueList.Count;
+            }
+            return axisLabel.IsNeedShowLabel(index, total);
         }
 
         public void SetNeedUpdateFilterData()
@@ -656,11 +713,23 @@ namespace XCharts.Runtime
             if (IsCategory() && boundaryGap)
             {
                 var each = axisLength / data.Count;
-                return (float)(each * (value + 0.5f));
+                return (float) (each * (value + 0.5f));
             }
             else
             {
-                return axisLength * (float)((value - context.minValue) / context.minMaxRange);
+                return axisLength * (float) ((value - context.minValue) / context.minMaxRange);
+            }
+        }
+
+        public float GetValueLength(double value, float axisLength)
+        {
+            if (context.minMaxRange > 0)
+            {
+                return axisLength * ((float) (value / context.minMaxRange));
+            }
+            else
+            {
+                return 0;
             }
         }
 
@@ -754,21 +823,21 @@ namespace XCharts.Runtime
             if (value <= 0 || value == 1)
                 return 0;
             else
-                return logBaseE ? (float)Math.Log(value) : (float)Math.Log(value, logBase);
+                return logBaseE ? (float) Math.Log(value) : (float) Math.Log(value, logBase);
         }
 
-        public int GetLogMinIndex()
+        public double GetLogMinIndex()
         {
-            return logBaseE
-                ? (int)Math.Log(context.minValue)
-                : (int)Math.Log(context.minValue, logBase);
+            return logBaseE ?
+                Math.Log(context.minValue) :
+                Math.Log(context.minValue, logBase);
         }
 
-        public int GetLogMaxIndex()
+        public double GetLogMaxIndex()
         {
-            return logBaseE
-                ? (int)Math.Log(context.maxValue)
-                : (int)Math.Log(context.maxValue, logBase);
+            return logBaseE ?
+                Math.Log(context.maxValue) :
+                Math.Log(context.maxValue, logBase);
         }
 
         public double GetLabelValue(int index)
@@ -787,6 +856,17 @@ namespace XCharts.Runtime
                 return context.labelValueList[context.labelValueList.Count - 1];
             else
                 return 0;
+        }
+
+        public void UpdateZeroOffset(float axisLength)
+        {
+            context.offset = context.minValue > 0 || context.minMaxRange == 0 ?
+                0 :
+                (context.maxValue < 0 ?
+                    axisLength :
+                    (float) (Math.Abs(context.minValue) * (axisLength /
+                        (Math.Abs(context.minValue) + Math.Abs(context.maxValue))))
+                );
         }
     }
 }

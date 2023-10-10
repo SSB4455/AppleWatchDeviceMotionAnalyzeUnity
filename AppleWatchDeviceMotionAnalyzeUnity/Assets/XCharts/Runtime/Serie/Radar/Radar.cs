@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,13 +6,28 @@ namespace XCharts.Runtime
     [System.Serializable]
     [SerieHandler(typeof(RadarHandler), true)]
     [RequireChartComponent(typeof(RadarCoord))]
-    [SerieExtraComponent(typeof(LabelStyle), typeof(LabelLine), typeof(AreaStyle), typeof(Emphasis))]
+    [SerieComponent(typeof(LabelStyle), typeof(AreaStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataComponent(typeof(ItemStyle), typeof(LabelStyle), typeof(AreaStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataExtraField()]
     public class Radar : Serie, INeedSerieContainer
     {
+        [SerializeField][Since("v3.2.0")] private bool m_Smooth = false;
+
+        /// <summary>
+        /// Whether use smooth curve.
+        /// |是否平滑曲线。平滑曲线时不支持区域填充颜色。
+        /// </summary>
+        public bool smooth
+        {
+            get { return m_Smooth; }
+            set { if (PropertyUtil.SetStruct(ref m_Smooth, value)) { SetVerticesDirty(); } }
+        }
+
         public int containerIndex { get; internal set; }
         public int containterInstanceId { get; internal set; }
+        public override SerieColorBy defaultColorBy { get { return radarType == RadarType.Multiple?SerieColorBy.Data : SerieColorBy.Serie; } }
+        public override bool multiDimensionLabel { get { return radarType == RadarType.Multiple; } }
 
-        public override bool useDataNameForColor { get { return true; } }
         public static Serie AddDefaultSerie(BaseChart chart, string serieName)
         {
             chart.AddChartComponentWhenNoExist<RadarCoord>();

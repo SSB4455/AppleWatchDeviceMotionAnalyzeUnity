@@ -1,4 +1,3 @@
-
 using UnityEditor;
 using XCharts.Runtime;
 
@@ -11,7 +10,7 @@ namespace XCharts.Editor
         {
             ++EditorGUI.indentLevel;
             PropertyTwoFiled("m_Center");
-            PropertyField("m_Radius");
+            PropertyTwoFiled("m_Radius");
             PropertyField("m_BackgroundColor");
             --EditorGUI.indentLevel;
         }

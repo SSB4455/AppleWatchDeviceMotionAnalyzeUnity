@@ -1,16 +1,13 @@
-
-using System;
-using System.Reflection;
-using UnityEngine;
-
 namespace XCharts.Runtime
 {
     [System.Serializable]
     [SerieHandler(typeof(BarHandler), true)]
     [SerieConvert(typeof(Line), typeof(Pie))]
-    [RequireChartComponent(typeof(GridCoord))]
+    [CoordOptions(typeof(GridCoord), typeof(PolarCoord))]
     [DefaultAnimation(AnimationType.BottomToTop)]
-    [SerieExtraComponent(typeof(LabelStyle), typeof(Emphasis))]
+    [SerieComponent(typeof(LabelStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataComponent(typeof(ItemStyle), typeof(LabelStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataExtraField("m_Ignore")]
     public class Bar : Serie, INeedSerieContainer
     {
         public int containerIndex { get; internal set; }
@@ -26,7 +23,7 @@ namespace XCharts.Runtime
             return serie;
         }
 
-        public static Bar CovertSerie(Serie serie)
+        public static Bar ConvertSerie(Serie serie)
         {
             var newSerie = SerieHelper.CloneSerie<Bar>(serie);
             return newSerie;

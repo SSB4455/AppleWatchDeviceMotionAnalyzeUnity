@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,13 +26,15 @@ namespace XCharts.Runtime
 
         protected override void UpdatePointerValue(Axis axis)
         {
+            if (axis == null)
+                return;
             var polar = chart.GetChartComponent<PolarCoord>(axis.polarIndex);
             if (polar == null)
                 return;
 
             if (!polar.context.isPointerEnter)
             {
-                axis.context.pointerValue = double.PositiveInfinity;
+                axis.context.pointerValue = double.NaN;
                 return;
             }
 
@@ -48,11 +49,12 @@ namespace XCharts.Runtime
 
         private void UpdateAxisMinMaxValue(RadiusAxis axis, bool updateChart = true)
         {
+            if (axis == null) return;
             if (axis.IsCategory() || !axis.show) return;
             double tempMinValue = 0;
             double tempMaxValue = 0;
-            SeriesHelper.GetXMinMaxValue(chart.series, null, axis.polarIndex, true, axis.inverse, out tempMinValue,
-                    out tempMaxValue, true);
+            SeriesHelper.GetXMinMaxValue(chart, axis.polarIndex, true, axis.inverse, out tempMinValue,
+                out tempMaxValue, true);
             AxisHelper.AdjustMinMaxValue(axis, ref tempMinValue, ref tempMaxValue, true);
             if (tempMinValue != axis.context.minValue || tempMaxValue != axis.context.maxValue)
             {
@@ -71,11 +73,15 @@ namespace XCharts.Runtime
 
         internal void UpdateAxisLabelText(RadiusAxis axis)
         {
+            if (axis == null)
+                return;
             var polar = chart.GetChartComponent<PolarCoord>(axis.polarIndex);
             if (axis.context.labelObjectList.Count <= 0)
                 InitRadiusAxis(axis);
             else
+            {
                 axis.UpdateLabelText(polar.context.radius, null, false);
+            }
         }
 
         private void InitRadiusAxis(RadiusAxis axis)
@@ -90,7 +96,7 @@ namespace XCharts.Runtime
 
             PolarHelper.UpdatePolarCenter(polar, chart.chartPosition, chart.chartWidth, chart.chartHeight);
             axis.context.labelObjectList.Clear();
-            var radius = polar.context.radius;
+            var radius = polar.context.outsideRadius - polar.context.insideRadius;
             var objName = component.GetType().Name + axis.index;
             var axisObj = ChartHelper.AddObject(objName, chart.transform, chart.chartMinAnchor,
                 chart.chartMaxAnchor, chart.chartPivot, chart.chartSizeDelta);
@@ -100,7 +106,7 @@ namespace XCharts.Runtime
             ChartHelper.HideAllObject(axisObj);
             var textStyle = axis.axisLabel.textStyle;
             var splitNumber = AxisHelper.GetScaleNumber(axis, radius, null);
-            var totalWidth = 0f;
+            var totalWidth = polar.context.insideRadius;
             var txtHig = textStyle.GetFontSize(chart.theme.axis) + 2;
             for (int i = 0; i < splitNumber; i++)
             {
@@ -132,13 +138,20 @@ namespace XCharts.Runtime
             var cenPos = polar.context.center;
             var dire = ChartHelper.GetDire(startAngle, true).normalized;
             var tickLength = axis.axisTick.GetLength(chart.theme.axis.tickLength);
-            var tickVector = ChartHelper.GetVertialDire(dire)
-                * (tickLength + axis.axisLabel.distance);
+            var tickVector = ChartHelper.GetVertialDire(dire) *
+                (tickLength + axis.axisLabel.distance);
+            if (axis.IsCategory())
+            {
+                totalWidth += polar.context.radius / axis.data.Count / 2;
+            }
             return ChartHelper.GetPos(cenPos, totalWidth, startAngle, true) + tickVector;
         }
 
         private void DrawRadiusAxis(VertexHelper vh, RadiusAxis radiusAxis)
         {
+            if (radiusAxis == null)
+                return;
+
             var polar = chart.GetChartComponent<PolarCoord>(radiusAxis.polarIndex);
             if (polar == null)
                 return;
@@ -151,26 +164,29 @@ namespace XCharts.Runtime
             var radius = polar.context.radius;
             var cenPos = polar.context.center;
             var size = AxisHelper.GetScaleNumber(radiusAxis, radius, null);
-            var totalWidth = 0f;
+            var totalWidth = polar.context.insideRadius;
             var dire = ChartHelper.GetDire(startAngle, true).normalized;
             var tickWidth = radiusAxis.axisTick.GetWidth(chart.theme.axis.tickWidth);
             var tickLength = radiusAxis.axisTick.GetLength(chart.theme.axis.tickLength);
             var tickVetor = ChartHelper.GetVertialDire(dire) * tickLength;
-            for (int i = 0; i <= size; i++)
+            for (int i = 0; i < size; i++)
             {
-                var scaleWidth = AxisHelper.GetScaleWidth(radiusAxis, radius, i);
+                var scaleWidth = AxisHelper.GetScaleWidth(radiusAxis, radius, i + 1);
                 var pos = ChartHelper.GetPos(cenPos, totalWidth + tickWidth, startAngle, true);
                 if (radiusAxis.show && radiusAxis.splitLine.show)
                 {
-                    var outsideRaidus = totalWidth + radiusAxis.splitLine.GetWidth(chart.theme.axis.splitLineWidth) * 2;
-                    var splitLineColor = radiusAxis.splitLine.GetColor(chart.theme.axis.splitLineColor);
-                    UGL.DrawDoughnut(vh, cenPos, totalWidth, outsideRaidus, splitLineColor, Color.clear);
+                    if (CanDrawSplitLine(angleAxis, i, size) && radiusAxis.splitLine.NeedShow(i, size))
+                    {
+                        var outsideRaidus = totalWidth + radiusAxis.splitLine.GetWidth(chart.theme.axis.splitLineWidth) * 2;
+                        var splitLineColor = radiusAxis.splitLine.GetColor(chart.theme.axis.splitLineColor);
+                        UGL.DrawDoughnut(vh, cenPos, totalWidth, outsideRaidus, splitLineColor, Color.clear);
+                    }
                 }
                 if (radiusAxis.show && radiusAxis.axisTick.show)
                 {
-                    if ((i == 0 && radiusAxis.axisTick.showStartTick)
-                        || (i == size && radiusAxis.axisTick.showEndTick)
-                        || (i > 0 && i < size))
+                    if ((i == 0 && radiusAxis.axisTick.showStartTick) ||
+                        (i == size && radiusAxis.axisTick.showEndTick) ||
+                        (i > 0 && i < size))
                     {
                         UGL.DrawLine(vh, pos, pos + tickVetor, tickWidth, chart.theme.axis.lineColor);
                     }
@@ -179,10 +195,22 @@ namespace XCharts.Runtime
             }
             if (radiusAxis.show && radiusAxis.axisLine.show)
             {
-                var lineStartPos = polar.context.center - dire * tickWidth;
-                var lineEndPos = polar.context.center + dire * (radius + tickWidth);
+                var lineStartPos = polar.context.center + dire * polar.context.insideRadius;
+                var lineEndPos = polar.context.center + dire * (polar.context.outsideRadius + 2 * tickWidth);
                 var lineWidth = radiusAxis.axisLine.GetWidth(chart.theme.axis.lineWidth);
                 UGL.DrawLine(vh, lineStartPos, lineEndPos, lineWidth, chart.theme.axis.lineColor);
+            }
+        }
+
+        private bool CanDrawSplitLine(AngleAxis angleAxis, int i, int size)
+        {
+            if (angleAxis.axisLine.show)
+            {
+                return i != size - 1 && i != 0;
+            }
+            else
+            {
+                return true;
             }
         }
     }

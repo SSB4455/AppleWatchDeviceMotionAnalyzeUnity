@@ -1,4 +1,3 @@
-﻿
 using System;
 using UnityEngine;
 #if dUI_TextMeshPro
@@ -266,6 +265,46 @@ namespace XCharts.Runtime
                     break;
                 default:
                     break;
+            }
+        }
+
+        public bool IsBottom()
+        {
+            switch (m_Align)
+            {
+                case Align.BottomCenter:
+                case Align.BottomLeft:
+                case Align.BottomRight:
+
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        public bool IsTop()
+        {
+            switch (m_Align)
+            {
+                case Align.TopCenter:
+                case Align.TopLeft:
+                case Align.TopRight:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        public bool IsCenter()
+        {
+            switch (m_Align)
+            {
+                case Align.Center:
+                case Align.CenterLeft:
+                case Align.CenterRight:
+                    return true;
+                default:
+                    return false;
             }
         }
 

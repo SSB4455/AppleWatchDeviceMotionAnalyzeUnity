@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -6,7 +5,9 @@ namespace XCharts.Runtime
     [System.Serializable]
     [SerieHandler(typeof(EffectScatterHandler), true)]
     [CoordOptions(typeof(GridCoord), typeof(SingleAxisCoord))]
-    [SerieExtraComponent(typeof(LabelStyle), typeof(Emphasis))]
+    [SerieComponent(typeof(LabelStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataComponent(typeof(ItemStyle), typeof(LabelStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataExtraField("m_Radius")]
     public class EffectScatter : BaseScatter
     {
         public static Serie AddDefaultSerie(BaseChart chart, string serieName)

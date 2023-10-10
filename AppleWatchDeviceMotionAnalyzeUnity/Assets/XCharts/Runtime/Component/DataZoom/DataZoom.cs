@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -57,6 +56,7 @@ namespace XCharts.Runtime
             /// </summary>
             Percent
         }
+
         [SerializeField] private bool m_Enable = true;
         [SerializeField] private FilterMode m_FilterMode;
         [SerializeField] private List<int> m_XAxisIndexs = new List<int>() { 0 };
@@ -65,11 +65,11 @@ namespace XCharts.Runtime
         [SerializeField] private bool m_SupportInsideScroll = true;
         [SerializeField] private bool m_SupportInsideDrag = true;
         [SerializeField] private bool m_SupportSlider;
-        [SerializeField] private bool m_SupportSelect;
+        [SerializeField] private bool m_SupportMarquee;
         [SerializeField] private bool m_ShowDataShadow;
         [SerializeField] private bool m_ShowDetail;
         [SerializeField] private bool m_ZoomLock;
-        [SerializeField] private bool m_Realtime;
+        //[SerializeField] private bool m_Realtime;
         [SerializeField] protected Color32 m_FillerColor;
         [SerializeField] protected Color32 m_BorderColor;
         [SerializeField] protected float m_BorderWidth;
@@ -81,17 +81,19 @@ namespace XCharts.Runtime
         [SerializeField] private RangeMode m_RangeMode;
         [SerializeField] private float m_Start;
         [SerializeField] private float m_End;
-        [SerializeField] private float m_StartValue;
-        [SerializeField] private float m_EndValue;
-        [SerializeField] private int m_MinShowNum = 1;
+        [SerializeField] private int m_MinShowNum = 2;
         [Range(1f, 20f)]
         [SerializeField] private float m_ScrollSensitivity = 1.1f;
         [SerializeField] private Orient m_Orient = Orient.Horizonal;
         [SerializeField] private LabelStyle m_LabelStyle = new LabelStyle();
         [SerializeField] private LineStyle m_LineStyle = new LineStyle(LineStyle.Type.Solid);
         [SerializeField] private AreaStyle m_AreaStyle = new AreaStyle();
+        [SerializeField][Since("v3.5.0")] private MarqueeStyle m_MarqueeStyle = new MarqueeStyle();
+        [SerializeField][Since("v3.6.0")] private bool m_StartLock;
+        [SerializeField][Since("v3.6.0")] private bool m_EndLock;
 
         public DataZoomContext context = new DataZoomContext();
+        private CustomDataZoomStartEndFunction m_StartEndFunction;
 
         /// <summary>
         /// Whether to show dataZoom.
@@ -141,7 +143,8 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetStruct(ref m_SupportInside, value)) SetVerticesDirty(); }
         }
         /// <summary>
-        /// 是否支持坐标系内滚动
+        /// Whether inside scrolling is supported.
+        /// |是否支持坐标系内滚动
         /// </summary>
         public bool supportInsideScroll
         {
@@ -149,7 +152,8 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetStruct(ref m_SupportInsideScroll, value)) SetVerticesDirty(); }
         }
         /// <summary>
-        /// 是否支持坐标系内拖拽
+        /// Whether insde drag is supported.
+        /// |是否支持坐标系内拖拽
         /// </summary>
         public bool supportInsideDrag
         {
@@ -166,12 +170,13 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetStruct(ref m_SupportSlider, value)) SetVerticesDirty(); }
         }
         /// <summary>
-        /// 是否支持框选。提供一个选框进行数据区域缩放。
+        /// Supported Box Selected. Provides a marquee for scaling the data area.
+        /// |是否支持框选。提供一个选框进行数据区域缩放。
         /// </summary>
-        private bool supportSelect
+        public bool supportMarquee
         {
-            get { return m_SupportSelect; }
-            set { if (PropertyUtil.SetStruct(ref m_SupportSelect, value)) SetVerticesDirty(); }
+            get { return m_SupportMarquee; }
+            set { if (PropertyUtil.SetStruct(ref m_SupportMarquee, value)) SetVerticesDirty(); }
         }
         /// <summary>
         /// Whether to show data shadow, to indicate the data tendency in brief.
@@ -301,6 +306,24 @@ namespace XCharts.Runtime
             set { m_Start = value; if (m_Start < 0) m_Start = 0; if (m_Start > 100) m_Start = 100; SetVerticesDirty(); }
         }
         /// <summary>
+        /// Lock start value.
+        /// |固定起始值，不让改变。
+        /// </summary>
+        public bool startLock
+        {
+            get { return m_StartLock; }
+            set { if (PropertyUtil.SetStruct(ref m_StartLock, value)) SetVerticesDirty(); }
+        }
+        /// <summary>
+        /// Lock end value.
+        /// |固定结束值，不让改变。
+        /// </summary>
+        public bool endLock
+        {
+            get { return m_EndLock; }
+            set { if (PropertyUtil.SetStruct(ref m_EndLock, value)) SetVerticesDirty(); }
+        }
+        /// <summary>
         /// The end percentage of the window out of the data extent, in the range of 0 ~ 100.
         /// |数据窗口范围的结束百分比。范围是：0 ~ 100。
         /// </summary>
@@ -363,9 +386,23 @@ namespace XCharts.Runtime
             get { return m_AreaStyle; }
             set { if (PropertyUtil.SetClass(ref m_AreaStyle, value)) SetComponentDirty(); }
         }
+        /// <summary>
+        /// 选取框样式。
+        /// </summary>
+        public MarqueeStyle marqueeStyle
+        {
+            get { return m_MarqueeStyle; }
+            set { if (PropertyUtil.SetClass(ref m_MarqueeStyle, value)) SetAllDirty(); }
+        }
+        /// <summary>
+        /// start和end变更委托。
+        /// </summary>
+        public CustomDataZoomStartEndFunction startEndFunction { get { return m_StartEndFunction; } set { m_StartEndFunction = value; } }
 
         class AxisIndexValueInfo
         {
+            public double rawMin;
+            public double rawMax;
             public double min;
             public double max;
         }
@@ -412,6 +449,7 @@ namespace XCharts.Runtime
                 show = true,
                 opacity = 0.3f
             };
+            m_MarqueeStyle = new MarqueeStyle();
         }
 
         /// <summary>
@@ -448,10 +486,10 @@ namespace XCharts.Runtime
                     start = context.y + context.height * m_Start / 100;
                     end = context.y + context.height * m_End / 100;
                     return ChartHelper.IsInRect(pos, context.x, context.x + context.width, start, end);
-                default: return false;
+                default:
+                    return false;
             }
         }
-
 
         public bool IsInSelectedZoom(int totalIndex, int index, bool invert)
         {
@@ -486,7 +524,8 @@ namespace XCharts.Runtime
                 case Orient.Vertical:
                     start = context.y + context.height * m_Start / 100;
                     return ChartHelper.IsInRect(pos, context.x, context.x + context.width, start - 10, start + 10);
-                default: return false;
+                default:
+                    return false;
             }
         }
 
@@ -507,10 +546,29 @@ namespace XCharts.Runtime
                 case Orient.Vertical:
                     end = context.y + context.height * m_End / 100;
                     return ChartHelper.IsInRect(pos, context.x, context.x + context.width, end - 10, end + 10);
-                default: return false;
+                default:
+                    return false;
             }
         }
 
+        public bool IsInMarqueeArea(SerieData serieData)
+        {
+            return IsInMarqueeArea(serieData.context.position);
+        }
+
+        public bool IsInMarqueeArea(Vector2 pos)
+        {
+            if (!supportMarquee) return false;
+            if (context.marqueeRect.width >= 0)
+            {
+                return context.marqueeRect.Contains(pos);
+            }
+            else
+            {
+                var rect = context.marqueeRect;
+                return (new Rect(rect.x + rect.width, rect.y, -rect.width, rect.height)).Contains(pos);
+            }
+        }
 
         public bool IsContainsAxis(Axis axis)
         {
@@ -596,12 +654,12 @@ namespace XCharts.Runtime
 
         internal void UpdateStartLabelPosition(Vector3 pos)
         {
-            m_StartLabel.SetPosition(pos);
+            if (m_StartLabel != null) m_StartLabel.SetPosition(pos);
         }
 
         internal void UpdateEndLabelPosition(Vector3 pos)
         {
-            m_EndLabel.SetPosition(pos);
+            if (m_EndLabel != null) m_EndLabel.SetPosition(pos);
         }
 
         public void UpdateRuntimeData(float chartX, float chartY, float chartWidth, float chartHeight)
@@ -616,38 +674,36 @@ namespace XCharts.Runtime
             context.height = chartHeight - runtimeTop - runtimeBottom;
         }
 
-        internal void SetXAxisIndexValueInfo(int xAxisIndex, double min, double max)
+        internal void SetXAxisIndexValueInfo(int xAxisIndex, ref double min, ref double max)
         {
-            if (!m_XAxisIndexInfos.ContainsKey(xAxisIndex))
+            AxisIndexValueInfo info;
+            if (!m_XAxisIndexInfos.TryGetValue(xAxisIndex, out info))
             {
-                m_XAxisIndexInfos[xAxisIndex] = new AxisIndexValueInfo()
-                {
-                    min = min,
-                    max = max
-                };
+                info = new AxisIndexValueInfo();
+                m_XAxisIndexInfos[xAxisIndex] = info;
             }
-            else
-            {
-                m_XAxisIndexInfos[xAxisIndex].min = min;
-                m_XAxisIndexInfos[xAxisIndex].max = max;
-            }
+            info.rawMin = min;
+            info.rawMax = max;
+            info.min = min + (max - min) * start / 100;
+            info.max = min + (max - min) * end / 100;
+            min = info.min;
+            max = info.max;
         }
 
-        internal void SetYAxisIndexValueInfo(int yAxisIndex, double min, double max)
+        internal void SetYAxisIndexValueInfo(int yAxisIndex, ref double min, ref double max)
         {
-            if (!m_YAxisIndexInfos.ContainsKey(yAxisIndex))
+            AxisIndexValueInfo info;
+            if (!m_YAxisIndexInfos.TryGetValue(yAxisIndex, out info))
             {
-                m_YAxisIndexInfos[yAxisIndex] = new AxisIndexValueInfo()
-                {
-                    min = min,
-                    max = max
-                };
+                info = new AxisIndexValueInfo();
+                m_YAxisIndexInfos[yAxisIndex] = info;
             }
-            else
-            {
-                m_YAxisIndexInfos[yAxisIndex].min = min;
-                m_YAxisIndexInfos[yAxisIndex].max = max;
-            }
+            info.rawMin = min;
+            info.rawMax = max;
+            info.min = min + (max - min) * start / 100;
+            info.max = min + (max - min) * end / 100;
+            min = info.min;
+            max = info.max;
         }
 
         internal bool IsXAxisIndexValue(int axisIndex)
@@ -662,24 +718,32 @@ namespace XCharts.Runtime
 
         internal void GetXAxisIndexValue(int axisIndex, out double min, out double max)
         {
-            min = 0;
-            max = 0;
-            if (m_XAxisIndexInfos.ContainsKey(axisIndex))
+            AxisIndexValueInfo info;
+            if (m_XAxisIndexInfos.TryGetValue(axisIndex, out info))
             {
-                var info = m_XAxisIndexInfos[axisIndex];
-                min = info.min;
-                max = info.max;
+                var range = info.rawMax - info.rawMin;
+                min = info.rawMin + range * m_Start / 100;
+                max = info.rawMin + range * m_End / 100;
+            }
+            else
+            {
+                min = 0;
+                max = 0;
             }
         }
         internal void GetYAxisIndexValue(int axisIndex, out double min, out double max)
         {
-            min = 0;
-            max = 0;
-            if (m_YAxisIndexInfos.ContainsKey(axisIndex))
+            AxisIndexValueInfo info;
+            if (m_YAxisIndexInfos.TryGetValue(axisIndex, out info))
             {
-                var info = m_YAxisIndexInfos[axisIndex];
-                min = info.min;
-                max = info.max;
+                var range = info.rawMax - info.rawMin;
+                min = info.rawMin + range * m_Start / 100;
+                max = info.rawMin + range * m_End / 100;
+            }
+            else
+            {
+                min = 0;
+                max = 0;
             }
         }
     }

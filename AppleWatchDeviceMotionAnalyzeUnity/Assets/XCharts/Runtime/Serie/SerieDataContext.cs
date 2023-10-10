@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +7,7 @@ namespace XCharts.Runtime
     public class SerieDataContext
     {
         public Vector3 labelPosition;
+        public Vector3 labelLinePosition;
         /// <summary>
         /// 开始角度
         /// </summary>
@@ -35,6 +35,7 @@ namespace XCharts.Runtime
         public float outsideRadius;
         public Vector3 position;
         public List<Vector3> dataPoints = new List<Vector3>();
+        public List<ChartLabel> dataLabels = new List<ChartLabel>();
         public List<SerieData> children = new List<SerieData>();
         /// <summary>
         /// 绘制区域。
@@ -57,7 +58,15 @@ namespace XCharts.Runtime
         /// Whether the data item is highlighted.
         /// |该数据项是否被高亮，一般由鼠标悬停或图例悬停触发高亮。
         /// </summary>
-        public bool highlight;
+        public bool highlight
+        {
+            get { return m_Highligth; }
+            set
+            {
+                m_Highligth = value;
+            }
+        }
+        private bool m_Highligth;
         public bool selected;
 
         public void Reset()
@@ -70,6 +79,7 @@ namespace XCharts.Runtime
             subRect = Rect.zero;
             children.Clear();
             dataPoints.Clear();
+            dataLabels.Clear();
         }
     }
 }

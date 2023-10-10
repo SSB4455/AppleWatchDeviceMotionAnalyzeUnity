@@ -1,4 +1,3 @@
-
 using System;
 using System.Text;
 using UnityEngine;
@@ -10,7 +9,7 @@ namespace XCharts.Runtime
     [System.Serializable]
     public class MainComponent : IComparable
     {
-        public int instanceId { get; internal set; }
+        public int instanceId { get { return index; } }
         public int index { get; internal set; }
         protected bool m_VertsDirty;
         protected bool m_ComponentDirty;
@@ -53,13 +52,9 @@ namespace XCharts.Runtime
             m_ComponentDirty = false;
         }
 
-        public virtual void Reset()
-        {
-        }
+        public virtual void Reset() { }
 
-        public virtual void ClearData()
-        {
-        }
+        public virtual void ClearData() { }
 
         public virtual void ClearDirty()
         {
@@ -73,9 +68,7 @@ namespace XCharts.Runtime
             SetComponentDirty();
         }
 
-        public virtual void SetDefaultValue()
-        {
-        }
+        public virtual void SetDefaultValue() { }
 
         public virtual void OnRemove()
         {
@@ -103,7 +96,9 @@ namespace XCharts.Runtime
         public virtual void CheckComponent(StringBuilder sb) { }
         public virtual void Update() { }
         public virtual void DrawBase(VertexHelper vh) { }
+        public virtual void DrawUpper(VertexHelper vh) { }
         public virtual void DrawTop(VertexHelper vh) { }
+        public virtual void OnSerieDataUpdate(int serieIndex) { }
         public virtual void OnPointerClick(PointerEventData eventData) { }
         public virtual void OnPointerDown(PointerEventData eventData) { }
         public virtual void OnPointerUp(PointerEventData eventData) { }
@@ -117,13 +112,13 @@ namespace XCharts.Runtime
     }
 
     public abstract class MainComponentHandler<T> : MainComponentHandler
-        where T : MainComponent
+    where T : MainComponent
     {
         public T component { get; internal set; }
 
         internal override void SetComponent(MainComponent component)
         {
-            this.component = (T)component;
+            this.component = (T) component;
         }
     }
 }

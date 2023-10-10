@@ -1,4 +1,3 @@
-
 using System;
 using UnityEngine;
 
@@ -9,7 +8,9 @@ namespace XCharts.Runtime
     [SerieConvert(typeof(SimplifiedLine), typeof(Bar))]
     [CoordOptions(typeof(GridCoord))]
     [DefaultAnimation(AnimationType.LeftToRight)]
-    [SerieExtraComponent()]
+    [SerieComponent()]
+    [SerieDataComponent()]
+    [SerieDataExtraField()]
     public class SimplifiedBar : Serie, INeedSerieContainer, ISimplifiedSerie
     {
         public int containerIndex { get; internal set; }
@@ -31,7 +32,7 @@ namespace XCharts.Runtime
             return serie;
         }
 
-        public static SimplifiedBar CovertSerie(Serie serie)
+        public static SimplifiedBar ConvertSerie(Serie serie)
         {
             var newSerie = serie.Clone<SimplifiedBar>();
             return newSerie;

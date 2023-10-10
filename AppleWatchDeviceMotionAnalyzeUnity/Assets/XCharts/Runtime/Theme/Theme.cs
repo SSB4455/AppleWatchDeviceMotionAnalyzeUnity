@@ -1,8 +1,7 @@
-
-using System.Collections.Generic;
-using UnityEngine;
 using System;
+using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 #if dUI_TextMeshPro
 using TMPro;
 #endif
@@ -50,12 +49,15 @@ namespace XCharts.Runtime
             get { return m_ThemeType; }
             set { PropertyUtil.SetStruct(ref m_ThemeType, value); }
         }
+        /// <summary>
+        /// the name of theme.
+        /// |主题名称。
+        /// </summary>
         public string themeName
         {
             get { return m_ThemeName; }
             set { PropertyUtil.SetClass(ref m_ThemeName, value); }
         }
-
 
         /// <summary>
         /// the contrast color of chart.
@@ -93,7 +95,7 @@ namespace XCharts.Runtime
 #if dUI_TextMeshPro
         /// <summary>
         /// the font of chart text。
-        /// 字体。
+        /// |主题字体。
         /// </summary>
         public TMP_FontAsset tmpFont
         {
@@ -107,7 +109,7 @@ namespace XCharts.Runtime
 #endif
         /// <summary>
         /// the font of chart text。
-        /// 字体。
+        /// |主题字体。
         /// </summary>
         public Font font
         {
@@ -247,8 +249,12 @@ namespace XCharts.Runtime
         {
             switch (m_ThemeType)
             {
-                case ThemeType.Default: ResetToDefaultTheme(this); return true;
-                case ThemeType.Dark: ResetToDarkTheme(this); return true;
+                case ThemeType.Default:
+                    ResetToDefaultTheme(this);
+                    return true;
+                case ThemeType.Dark:
+                    ResetToDarkTheme(this);
+                    return true;
                 case ThemeType.Custom:
                     return false;
             }
@@ -266,7 +272,6 @@ namespace XCharts.Runtime
             theme.CopyTheme(this);
             return theme;
         }
-
 
         /// <summary>
         /// default theme.
@@ -383,7 +388,7 @@ namespace XCharts.Runtime
         {
             Color color;
             ColorUtility.TryParseHtmlString(hexColorStr, out color);
-            return (Color32)color;
+            return (Color32) color;
         }
 
         public void SetColorPalette(List<string> hexColorStringList)

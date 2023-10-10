@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -43,6 +42,10 @@ namespace XCharts.Runtime
             Corss
         }
 
+        /// <summary>
+        /// Trigger strategy.
+        /// |触发类型。
+        /// </summary>
         public enum Trigger
         {
             /// <summary>
@@ -61,10 +64,37 @@ namespace XCharts.Runtime
             /// </summary>
             None
         }
+        /// <summary>
+        /// Position type.
+        /// |坐标类型。
+        /// </summary>
+        public enum Position
+        {
+            /// <summary>
+            /// Auto. The mobile platform is displayed at the top, and the non-mobile platform follows the mouse position.
+            /// |自适应。移动平台靠顶部显示，非移动平台跟随鼠标位置。
+            /// </summary>
+            Auto,
+            /// <summary>
+            /// Custom. Fully customize display position (x,y).
+            /// |自定义。完全自定义显示位置(x,y)。
+            /// </summary>
+            Custom,
+            /// <summary>
+            /// Just fix the coordinate X. Y follows the mouse position.
+            /// |只固定坐标X。Y跟随鼠标位置。
+            /// </summary>
+            FixedX,
+            /// <summary>
+            /// Just fix the coordinate Y. X follows the mouse position.
+            /// |只固定坐标Y。X跟随鼠标位置。
+            FixedY
+        }
 
         [SerializeField] private bool m_Show = true;
         [SerializeField] private Type m_Type;
         [SerializeField] private Trigger m_Trigger = Trigger.Item;
+        [SerializeField][Since("v3.3.0")] private Position m_Position = Position.Auto;
         [SerializeField] private string m_ItemFormatter;
         [SerializeField] private string m_TitleFormatter;
         [SerializeField] private string m_Marker = "●";
@@ -84,15 +114,12 @@ namespace XCharts.Runtime
         [SerializeField] private Image.Type m_BackgroundType = Image.Type.Simple;
         [SerializeField] private Color m_BackgroundColor;
         [SerializeField] private float m_BorderWidth = 2f;
-        [SerializeField] private bool m_FixedXEnable = false;
         [SerializeField] private float m_FixedX = 0f;
-        [SerializeField] private bool m_FixedYEnable = false;
-        [SerializeField] private float m_FixedY = 0f;
+        [SerializeField] private float m_FixedY = 0.7f;
         [SerializeField] private float m_TitleHeight = 25f;
         [SerializeField] private float m_ItemHeight = 25f;
         [SerializeField] private Color32 m_BorderColor = new Color32(230, 230, 230, 255);
         [SerializeField] private LineStyle m_LineStyle = new LineStyle(LineStyle.Type.None);
-        [SerializeField] private LabelStyle m_IndicatorLabelStyle = new LabelStyle();
         [SerializeField]
         private LabelStyle m_TitleLabelStyle = new LabelStyle()
         {
@@ -101,9 +128,9 @@ namespace XCharts.Runtime
         [SerializeField]
         private List<LabelStyle> m_ContentLabelStyles = new List<LabelStyle>()
         {
-            new LabelStyle(){ textPadding = new TextPadding(0,5,0,0), textStyle = new TextStyle() { alignment = TextAnchor.MiddleLeft }},
-            new LabelStyle(){ textPadding = new TextPadding(0,20,0,0), textStyle = new TextStyle() { alignment = TextAnchor.MiddleLeft }},
-            new LabelStyle(){ textPadding = new TextPadding(0,0,0,0), textStyle = new TextStyle() { alignment = TextAnchor.MiddleRight }}
+            new LabelStyle() { textPadding = new TextPadding(0, 5, 0, 0), textStyle = new TextStyle() { alignment = TextAnchor.MiddleLeft } },
+            new LabelStyle() { textPadding = new TextPadding(0, 20, 0, 0), textStyle = new TextStyle() { alignment = TextAnchor.MiddleLeft } },
+            new LabelStyle() { textPadding = new TextPadding(0, 0, 0, 0), textStyle = new TextStyle() { alignment = TextAnchor.MiddleRight } }
         };
 
         public TooltipContext context = new TooltipContext();
@@ -137,43 +164,73 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetStruct(ref m_Trigger, value)) SetAllDirty(); }
         }
         /// <summary>
+        /// Type of position.
+        /// |显示位置类型。
+        /// </summary>
+        public Position position
+        {
+            get { return m_Position; }
+            set { if (PropertyUtil.SetStruct(ref m_Position, value)) SetAllDirty(); }
+        }
+        /// <summary>
         /// The string template formatter for the tooltip title content. Support for wrapping lines with \n.
         /// The placeholder {I} can be set separately to indicate that the title is ignored and not displayed.
-        /// Template variables are {.}, {a}, {b}, {c}, {d}.</br>
-        /// {.} is the dot of the corresponding color of a Serie that is currently indicated or whose index is 0.</br>
-        /// {a} is the series name of the serie that is currently indicated or whose index is 0.</br>
-        /// {b} is the name of the data item serieData that is currently indicated or whose index is 0, or a category value (such as the X-axis of a line chart).</br>
-        /// {c} is the value of a Y-dimension (dimesion is 1) from a Serie that is currently indicated or whose index is 0.</br>
-        /// {d} is the percentage value of Y-dimensions (dimesion is 1) from serie that is currently indicated or whose index is 0, with no % sign.</br>
-        /// {e} is the name of the data item serieData that is currently indicated or whose index is 0.</br>
-        /// {.1} represents a dot from serie corresponding color that specifies index as 1.</br>
-        /// 1 in {a1}, {b1}, {c1} represents a serie that specifies an index of 1.</br>
-        /// {c1:2} represents the third data from serie's current indication data item indexed to 1 (a data item has multiple data, index 2 represents the third data).</br>
-        /// {c1:2-2} represents the third data item from serie's third data item indexed to 1 (i.e., which data item must be specified to specify).</br>
-        /// {d1:2: F2} indicates that a formatted string with a value specified separately is F2 (numericFormatter is used when numericFormatter is not specified).</br>
-        /// {d:0.##} indicates that a formatted string with a value specified separately is 0.##   (used for percentage, reserved 2 valid digits while avoiding the situation similar to "100.00%" when using f2 ).</br>
-        /// Example: "{a}, {c}", "{a1}, {c1: f1}", "{a1}, {c1:0: f1}", "{a1} : {c1:1-1: f1}"</br>
-        /// |提示框标题内容的字符串模版格式器。支持用 \n 换行。可以单独设置占位符{i}表示忽略不显示title。</br>
-        /// 模板变量有{.}、{a}、{b}、{c}、{d}、{e}。</br>
-        /// {.}为当前所指示或index为0的serie的对应颜色的圆点。</br>
-        /// {a}为当前所指示或index为0的serie的系列名name。</br>
-        /// {b}为当前所指示或index为0的serie的数据项serieData的name，或者类目值（如折线图的X轴）。</br>
-        /// {c}为当前所指示或index为0的serie的y维（dimesion为1）的数值。</br>
-        /// {d}为当前所指示或index为0的serie的y维（dimesion为1）百分比值，注意不带%号。</br>
-        /// {e}为当前所指示或index为0的serie的数据项serieData的name。</br>
-        /// {.1}表示指定index为1的serie对应颜色的圆点。</br>
-        /// {a1}、{b1}、{c1}中的1表示指定index为1的serie。</br>
-        /// {c1:2}表示索引为1的serie的当前指示数据项的第3个数据（一个数据项有多个数据，index为2表示第3个数据）。</br>
-        /// {c1:2-2}表示索引为1的serie的第3个数据项的第3个数据（也就是要指定第几个数据项时必须要指定第几个数据）。</br>
-        /// {d1:2:f2}表示单独指定了数值的格式化字符串为f2（不指定时用numericFormatter）。</br>
-        /// {d:0.##} 表示单独指定了数值的格式化字符串为 0.## （用于百分比，保留2位有效数同时又能避免使用 f2 而出现的类似于"100.00%"的情况 ）。</br>
+        /// Template see itemFormatter.
+        /// |提示框标题内容的字符串模版格式器。支持用 \n 换行。可以单独设置占位符{i}表示忽略不显示title。
+        /// 模板变量有{.}、{a}、{b}、{c}、{d}、{e}、{f}、{g}。<br/>
+        /// {.}为当前所指示或index为0的serie的对应颜色的圆点。<br/>
+        /// {a}为当前所指示或index为0的serie的系列名name。<br/>
+        /// {b}为当前所指示或index为0的serie的数据项serieData的name，或者类目值（如折线图的X轴）。<br/>
+        /// {c}为当前所指示或index为0的serie的y维（dimesion为1）的数值。<br/>
+        /// {d}为当前所指示或index为0的serie的y维（dimesion为1）百分比值，注意不带%号。<br/>
+        /// {e}为当前所指示或index为0的serie的数据项serieData的name。<br/>
+        /// {h}为当前所指示或index为0的serie的数据项serieData的十六进制颜色值。<br/>
+        /// {f}为数据总和。<br/>
+        /// {g}为数据总个数。<br/>
+        /// {.1}表示指定index为1的serie对应颜色的圆点。<br/>
+        /// {a1}、{b1}、{c1}中的1表示指定index为1的serie。<br/>
+        /// {c1:2}表示索引为1的serie的当前指示数据项的第3个数据（一个数据项有多个数据，index为2表示第3个数据）。<br/>
+        /// {c1:2-2}表示索引为1的serie的第3个数据项的第3个数据（也就是要指定第几个数据项时必须要指定第几个数据）。<br/>
+        /// {d1:2:f2}表示单独指定了数值的格式化字符串为f2（不指定时用numericFormatter）。<br/>
+        /// {d:0.##} 表示单独指定了数值的格式化字符串为 0.## （用于百分比，保留2位有效数同时又能避免使用 f2 而出现的类似于"100.00%"的情况 ）。<br/>
         /// 示例："{a}:{c}"、"{a1}:{c1:f1}"、"{a1}:{c1:0:f1}"、"{a1}:{c1:1-1:f1}"
+        /// </summary>
         /// </summary>
         public string titleFormatter { get { return m_TitleFormatter; } set { m_TitleFormatter = value; } }
         /// <summary>
         /// a string template formatter for a single Serie or data item content. Support for wrapping lines with \n.
-        /// When formatter is not null, use formatter first, otherwise use itemFormatter.
-        /// |提示框单个serie或数据项内容的字符串模版格式器。支持用 \n 换行。当formatter不为空时，优先使用formatter，否则使用itemFormatter。
+        /// Template variables are {.}, {a}, {b}, {c}, {d}.<br/>
+        /// {.} is the dot of the corresponding color of a Serie that is currently indicated or whose index is 0.<br/>
+        /// {a} is the series name of the serie that is currently indicated or whose index is 0.<br/>
+        /// {b} is the name of the data item serieData that is currently indicated or whose index is 0, or a category value (such as the X-axis of a line chart).<br/>
+        /// {c} is the value of a Y-dimension (dimesion is 1) from a Serie that is currently indicated or whose index is 0.<br/>
+        /// {d} is the percentage value of Y-dimensions (dimesion is 1) from serie that is currently indicated or whose index is 0, with no % sign.<br/>
+        /// {e} is the name of the data item serieData that is currently indicated or whose index is 0.<br/>
+        /// {f} is sum of data.<br/>
+        /// {.1} represents a dot from serie corresponding color that specifies index as 1.<br/>
+        /// 1 in {a1}, {b1}, {c1} represents a serie that specifies an index of 1.<br/>
+        /// {c1:2} represents the third data from serie's current indication data item indexed to 1 (a data item has multiple data, index 2 represents the third data).<br/>
+        /// {c1:2-2} represents the third data item from serie's third data item indexed to 1 (i.e., which data item must be specified to specify).<br/>
+        /// {d1:2: F2} indicates that a formatted string with a value specified separately is F2 (numericFormatter is used when numericFormatter is not specified).<br/>
+        /// {d:0.##} indicates that a formatted string with a value specified separately is 0.##   (used for percentage, reserved 2 valid digits while avoiding the situation similar to "100.00%" when using f2 ).<br/>
+        /// Example: "{a}, {c}", "{a1}, {c1: f1}", "{a1}, {c1:0: f1}", "{a1} : {c1:1-1: f1}"<br/>
+        /// |提示框单个serie或数据项内容的字符串模版格式器。支持用 \n 换行。用|来表示多个列的分隔。
+        /// 模板变量有{.}、{a}、{b}、{c}、{d}、{e}、{f}、{g}。<br/>
+        /// {i}或-表示忽略当前项。
+        /// {.}为当前所指示的serie或数据项的对应颜色的圆点。<br/>
+        /// {a}为当前所指示的serie或数据项的系列名name。<br/>
+        /// {b}为当前所指示的serie或数据项的数据项serieData的name，或者类目值（如折线图的X轴）。<br/>
+        /// {c}为当前所指示的serie或数据项的y维（dimesion为1）的数值。<br/>
+        /// {d}为当前所指示的serie或数据项的y维（dimesion为1）百分比值，注意不带%号。<br/>
+        /// {e}为当前所指示的serie或数据项的数据项serieData的name。<br/>
+        /// {f}为当前所指示的serie的默认维度的数据总和。<br/>
+        /// {g}为当前所指示的serie的数据总个数。<br/>
+        /// {h}为当前所指示的serie的十六进制颜色值。<br/>
+        /// {c0}表示当前数据项维度为0的数据。<br/>
+        /// {c1}表示当前数据项维度为1的数据。<br/>
+        /// {d3}表示维度3的数据的百分比。它的分母是默认维度（一般是1维度）数据。<br/>
+        /// |表示多个列的分隔。<br>
+        /// 示例："{i}", "{.}|{a}|{c}", "{.}|{b}|{c2:f2}"
         /// </summary>
         public string itemFormatter { get { return m_ItemFormatter; } set { m_ItemFormatter = value; } }
         /// <summary>
@@ -233,7 +290,7 @@ namespace XCharts.Runtime
         public bool ignoreDataShow { get { return m_IgnoreDataShow; } set { m_IgnoreDataShow = value; } }
         /// <summary>
         /// The default display character information for ignored data.
-        /// |被忽略数据的默认显示字符信息。
+        /// |被忽略数据的默认显示字符信息。如果设置为空，则表示完全不显示忽略数据。
         /// </summary>
         public string ignoreDataDefaultContent { get { return m_IgnoreDataDefaultContent; } set { m_IgnoreDataDefaultContent = value; } }
         /// <summary>
@@ -285,54 +342,55 @@ namespace XCharts.Runtime
             get { return m_BorderColor; }
             set { if (PropertyUtil.SetColor(ref m_BorderColor, value)) SetVerticesDirty(); }
         }
-        public bool fixedXEnable
-        {
-            get { return m_FixedXEnable; }
-            set { if (PropertyUtil.SetStruct(ref m_FixedXEnable, value)) SetVerticesDirty(); }
-        }
+        /// <summary>
+        /// the x positionn of fixedX.
+        /// |固定X位置的坐标。
+        /// </summary>
         public float fixedX
         {
             get { return m_FixedX; }
             set { if (PropertyUtil.SetStruct(ref m_FixedX, value)) SetVerticesDirty(); }
         }
-        public bool fixedYEnable
-        {
-            get { return m_FixedYEnable; }
-            set { if (PropertyUtil.SetStruct(ref m_FixedYEnable, value)) SetVerticesDirty(); }
-        }
+        /// <summary>
+        /// the y position of fixedY.
+        /// |固定Y位置的坐标。
+        /// </summary>
         public float fixedY
         {
             get { return m_FixedY; }
             set { if (PropertyUtil.SetStruct(ref m_FixedY, value)) SetVerticesDirty(); }
         }
+        /// <summary>
+        /// height of title text.
+        /// |标题文本的高。
+        /// </summary>
         public float titleHeight
         {
             get { return m_TitleHeight; }
             set { if (PropertyUtil.SetStruct(ref m_TitleHeight, value)) SetComponentDirty(); }
         }
+        /// <summary>
+        /// height of content text.
+        /// |数据项文本的高。
+        /// </summary>
         public float itemHeight
         {
             get { return m_ItemHeight; }
             set { if (PropertyUtil.SetStruct(ref m_ItemHeight, value)) SetComponentDirty(); }
         }
         /// <summary>
-        /// the label style of tooltip axis indicator label.
-        /// |提示框的坐标轴指示器文本的样式。
-        /// </summary>
-        public LabelStyle indicatorLabelStyle
-        {
-            get { return m_IndicatorLabelStyle; }
-            set { if (value != null) { m_IndicatorLabelStyle = value; SetComponentDirty(); } }
-        }
-        /// <summary>
-        /// 标题的文本样式。
+        /// the textstyle of title.
+        /// |标题的文本样式。
         /// </summary>
         public LabelStyle titleLabelStyle
         {
             get { return m_TitleLabelStyle; }
             set { if (value != null) { m_TitleLabelStyle = value; SetComponentDirty(); } }
         }
-
+        /// <summary>
+        /// the textstyle list of content.
+        /// |内容部分的文本样式列表。和列一一对应。
+        /// </summary>
         public List<LabelStyle> contentLabelStyles
         {
             get { return m_ContentLabelStyles; }
@@ -354,14 +412,13 @@ namespace XCharts.Runtime
         /// </summary>
         public override bool componentDirty
         {
-            get { return m_ComponentDirty || lineStyle.componentDirty || indicatorLabelStyle.componentDirty; }
+            get { return m_ComponentDirty || lineStyle.componentDirty; }
         }
 
         public override void ClearComponentDirty()
         {
             base.ClearComponentDirty();
             lineStyle.ClearComponentDirty();
-            indicatorLabelStyle.ClearComponentDirty();
         }
         /// <summary>
         /// 当前提示框所指示的Serie索引（目前只对散点图有效）。
@@ -372,7 +429,7 @@ namespace XCharts.Runtime
         /// |当前提示框所指示的数据项索引。
         /// </summary>
         public List<int> runtimeDataIndex { get { return m_RuntimeDateIndex; } internal set { m_RuntimeDateIndex = value; } }
-        private List<int> m_RuntimeDateIndex = new List<int>() { -1, -1 };
+        private List<int> m_RuntimeDateIndex = new List<int>() {-1, -1 };
 
         /// <summary>
         /// Keep Tooltiop displayed at the top.
@@ -422,12 +479,29 @@ namespace XCharts.Runtime
         /// 更新文本框位置
         /// </summary>
         /// <param name="pos"></param>
-        public void UpdateContentPos(Vector2 pos)
+        public void UpdateContentPos(Vector2 pos, float width, float height)
         {
             if (view != null)
             {
-                if (fixedXEnable) pos.x = fixedX;
-                if (fixedYEnable) pos.y = fixedY;
+                switch (m_Position)
+                {
+                    case Position.Auto:
+#if UNITY_ANDROID || UNITY_IOS
+                        if (m_FixedY == 0) pos.y = ChartHelper.GetActualValue(0.7f, height);
+                        else pos.y = ChartHelper.GetActualValue(m_FixedY, height);
+#endif
+                        break;
+                    case Position.Custom:
+                        pos.x = ChartHelper.GetActualValue(m_FixedX, width);
+                        pos.y = ChartHelper.GetActualValue(m_FixedY, height);
+                        break;
+                    case Position.FixedX:
+                        pos.x = ChartHelper.GetActualValue(m_FixedX, width);
+                        break;
+                    case Position.FixedY:
+                        pos.y = ChartHelper.GetActualValue(m_FixedY, height);
+                        break;
+                }
                 view.UpdatePosition(pos);
             }
         }

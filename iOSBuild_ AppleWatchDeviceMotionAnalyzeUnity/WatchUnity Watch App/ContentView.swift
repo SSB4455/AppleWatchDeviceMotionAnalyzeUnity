@@ -20,13 +20,12 @@ struct ContentView: View {
             ControlsView().tag(Tab.controls)
             DataDisplayView().tag(Tab.display)
         }
-        //.navigationTitle(workoutManager.selectedWorkout?.name ?? "")
+        .border(workoutManager.isRecording ? .red : .clear)
         .navigationBarBackButtonHidden(true)
         //.navigationBarHidden(selection == .nowPlaying)
         
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
     }
-    
 }
 
 struct DataDisplayView: View {
@@ -37,7 +36,7 @@ struct DataDisplayView: View {
     var body: some View {
         ScrollView() {
             VStack {
-                Text("\(workoutManager.frequency)hz_").font(.headline)
+                Text("\(workoutManager.frequency)hz").font(.headline)
                 Divider()
             }
             
@@ -98,6 +97,32 @@ struct DataDisplayView: View {
                 }
             }
             
+        }
+    }
+}
+
+struct ControlsView: View {
+    @EnvironmentObject var workoutManager: WorkoutManager
+
+    var body: some View {
+        VStack {
+            HStack {
+                VStack {
+                    Button {
+                        workoutManager.isRecording = !workoutManager.isRecording
+                    } label: {
+                        Image(systemName: workoutManager.isRecording ? "stop.circle" : "record.circle")
+                    }
+                    .scaledToFill()
+                    //.tint(.red)
+                    .font(.title2)
+                    Text(workoutManager.isRecording ? "Stop" : "Record")
+                }
+            }
+            Divider()
+            HStack {
+                Toggle("Sync to phone", isOn: $workoutManager.syncToPhone)
+            }
         }
     }
 }

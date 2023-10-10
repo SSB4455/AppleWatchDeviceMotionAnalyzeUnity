@@ -10,6 +10,24 @@ namespace XUGL
     /// </summary>
     public static class UGL
     {
+        /// <summary>
+        /// 曲线方向
+        /// </summary>
+        public enum Direction
+        {
+            /// <summary>
+            /// 沿X轴方向
+            /// </summary>
+            XAxis,
+            /// <summary>
+            /// 沿Y轴方向
+            /// </summary>
+            YAxis,
+            /// <summary>
+            /// 随机无序的。如一个闭合的环状曲线。
+            /// </summary>
+            Random
+        }
         private static readonly Color32 s_ClearColor32 = new Color32(0, 0, 0, 0);
         private static readonly Vector2 s_ZeroVector2 = Vector2.zero;
         private static UIVertex[] s_Vertex = new UIVertex[4];
@@ -27,7 +45,7 @@ namespace XUGL
         /// <param name="dent">箭头凹度</param>
         /// <param name="color">颜色</param>
         public static void DrawArrow(VertexHelper vh, Vector3 startPoint, Vector3 arrowPoint, float width,
-           float height, float offset, float dent, Color32 color)
+            float height, float offset, float dent, Color32 color)
         {
             var dir = (arrowPoint - startPoint).normalized;
             var sharpPos = arrowPoint + (offset + height / 4) * dir;
@@ -134,7 +152,7 @@ namespace XUGL
             }
             else if (smooth)
             {
-                DrawCurves(vh, points, width, color, 2);
+                DrawCurves(vh, points, width, color, 2, 2, Direction.XAxis, float.NaN, closepath);
             }
             else
             {
@@ -187,13 +205,13 @@ namespace XUGL
         }
 
         public static void AddVertToVertexHelper(VertexHelper vh, Vector3 top,
-             Vector3 bottom, Color32 color, bool needTriangle = true)
+            Vector3 bottom, Color32 color, bool needTriangle = true)
         {
             AddVertToVertexHelper(vh, top, bottom, color, color, needTriangle);
         }
 
         public static void AddVertToVertexHelper(VertexHelper vh, Vector3 top,
-             Vector3 bottom, Color32 topColor, Color32 bottomColor, bool needTriangle = true)
+            Vector3 bottom, Color32 topColor, Color32 bottomColor, bool needTriangle = true)
         {
             var lastVertCount = vh.currentVertCount;
             vh.AddVert(top, topColor, Vector2.zero);
@@ -518,7 +536,7 @@ namespace XUGL
         /// <param name="color">颜色</param>
         /// <param name="vertical">是否垂直方向</param>
         public static void DrawRectangle(VertexHelper vh, Vector3 p, float xRadius, float yRadius,
-                Color32 color, bool vertical = true)
+            Color32 color, bool vertical = true)
         {
             DrawRectangle(vh, p, xRadius, yRadius, color, color, vertical);
         }
@@ -1049,14 +1067,14 @@ namespace XUGL
             if (borderWidth == 0 || UGLHelper.IsClearColor(color)) return;
             var halfWid = rectWidth / 2;
             var halfHig = rectHeight / 2;
-            var lbIn = new Vector3(center.x - halfWid, center.y - halfHig);
-            var lbOt = new Vector3(center.x - halfWid - borderWidth, center.y - halfHig - borderWidth);
-            var ltIn = new Vector3(center.x - halfWid, center.y + halfHig);
-            var ltOt = new Vector3(center.x - halfWid - borderWidth, center.y + halfHig + borderWidth);
-            var rtIn = new Vector3(center.x + halfWid, center.y + halfHig);
-            var rtOt = new Vector3(center.x + halfWid + borderWidth, center.y + halfHig + borderWidth);
-            var rbIn = new Vector3(center.x + halfWid, center.y - halfHig);
-            var rbOt = new Vector3(center.x + halfWid + borderWidth, center.y - halfHig - borderWidth);
+            var lbIn = new Vector3(center.x - halfWid - extWidth, center.y - halfHig - extWidth);
+            var lbOt = new Vector3(center.x - halfWid - borderWidth - extWidth, center.y - halfHig - borderWidth - extWidth);
+            var ltIn = new Vector3(center.x - halfWid - extWidth, center.y + halfHig + extWidth);
+            var ltOt = new Vector3(center.x - halfWid - borderWidth - extWidth, center.y + halfHig + borderWidth + extWidth);
+            var rtIn = new Vector3(center.x + halfWid + extWidth, center.y + halfHig + extWidth);
+            var rtOt = new Vector3(center.x + halfWid + borderWidth + extWidth, center.y + halfHig + borderWidth + extWidth);
+            var rbIn = new Vector3(center.x + halfWid + extWidth, center.y - halfHig - extWidth);
+            var rbOt = new Vector3(center.x + halfWid + borderWidth + extWidth, center.y - halfHig - borderWidth - extWidth);
             float brLt = 0, brRt = 0, brRb = 0, brLb = 0;
             bool needRound = false;
             InitCornerRadius(cornerRadius, rectWidth, rectHeight, horizontal, invertCorner, ref brLt, ref brRt, ref brRb,
@@ -1185,7 +1203,7 @@ namespace XUGL
         }
 
         public static void DrawTriangle(VertexHelper vh, Vector3 p1,
-           Vector3 p2, Vector3 p3, Color32 color, Color32 color2, Color32 color3)
+            Vector3 p2, Vector3 p3, Color32 color, Color32 color2, Color32 color3)
         {
             UIVertex v1 = new UIVertex();
             v1.position = p1;
@@ -1213,7 +1231,7 @@ namespace XUGL
         }
 
         public static void DrawCricle(VertexHelper vh, Vector3 center, float radius, Color32 color,
-           Color32 toColor, float smoothness = 2f)
+            Color32 toColor, float smoothness = 2f)
         {
             DrawSector(vh, center, radius, color, toColor, 0, 360, 0, s_ClearColor32, smoothness);
         }
@@ -1260,13 +1278,13 @@ namespace XUGL
         }
 
         public static void DrawSector(VertexHelper vh, Vector3 center, float radius, Color32 color,
-                    float startDegree, float toDegree, float smoothness = 2f)
+            float startDegree, float toDegree, float smoothness = 2f)
         {
             DrawSector(vh, center, radius, color, color, startDegree, toDegree, 0, s_ClearColor32, smoothness);
         }
 
         public static void DrawSector(VertexHelper vh, Vector3 center, float radius, Color32 color, Color32 toColor,
-                    float startDegree, float toDegree, int gradientType = 0, bool isYAxis = false, float smoothness = 2f)
+            float startDegree, float toDegree, int gradientType = 0, bool isYAxis = false, float smoothness = 2f)
         {
             DrawSector(vh, center, radius, color, toColor, startDegree, toDegree, 0, s_ClearColor32, 0, smoothness,
                 gradientType, isYAxis);
@@ -1305,10 +1323,11 @@ namespace XUGL
             float smoothness, int gradientType = 0, bool isYAxis = false)
         {
             if (radius == 0) return;
-            if (gap > 0 && Mathf.Abs(toDegree - startDegree) >= 360) gap = 0;
+            var isCircle = Mathf.Abs(toDegree - startDegree) >= 360;
+            if (gap > 0 && isCircle) gap = 0;
             radius -= borderWidth;
             smoothness = (smoothness < 0 ? 2f : smoothness);
-            int segments = (int)((2 * Mathf.PI * radius) * (Mathf.Abs(toDegree - startDegree) / 360) / smoothness);
+            int segments = (int) ((2 * Mathf.PI * radius) * (Mathf.Abs(toDegree - startDegree) / 360) / smoothness);
             if (segments < 1) segments = 1;
             float startAngle = startDegree * Mathf.Deg2Rad;
             float toAngle = toDegree * Mathf.Deg2Rad;
@@ -1345,7 +1364,7 @@ namespace XUGL
                     if (realToAngle < realStartAngle) realToAngle = realStartAngle;
                     p2 = UGLHelper.GetPos(center, radius, realStartAngle);
                 }
-                if (needBorder)
+                if (needBorder && !isCircle)
                 {
                     borderDiff = borderLineWidth / Mathf.Sin(halfAngle);
                     realCenter += borderDiff * middleDire;
@@ -1381,9 +1400,9 @@ namespace XUGL
                     {
                         p4 = new Vector3(p3.x, realCenter.y);
                         var dist = p4.x - realCenter.x;
-                        var tcolor = Color32.Lerp(color, toColor, dist >= 0
-                            ? dist / radius
-                            : Mathf.Min(radius + dist, radius) / radius);
+                        var tcolor = Color32.Lerp(color, toColor, dist >= 0 ?
+                            dist / radius :
+                            Mathf.Min(radius + dist, radius) / radius);
                         if (isLeft && (i == segments || i == 0)) tcolor = toColor;
                         DrawQuadrilateral(vh, lastP4, p2, p3, p4, lastColor, tcolor);
                         lastP4 = p4;
@@ -1496,11 +1515,12 @@ namespace XUGL
             insideRadius += borderWidth;
             smoothness = smoothness < 0 ? 2f : smoothness;
             Vector3 p1, p2, p3, p4, e1, e2;
+            var isCircle = Mathf.Abs(toDegree - startDegree) >= 360;
             var needBorder = borderWidth != 0;
             var needSpace = gap != 0;
             var diffAngle = Mathf.Abs(toDegree - startDegree) * Mathf.Deg2Rad;
 
-            int segments = (int)((2 * Mathf.PI * outsideRadius) * (diffAngle * Mathf.Rad2Deg / 360) / smoothness);
+            int segments = (int) ((2 * Mathf.PI * outsideRadius) * (diffAngle * Mathf.Rad2Deg / 360) / smoothness);
             if (segments < 1) segments = 1;
             float startAngle = startDegree * Mathf.Deg2Rad;
             float toAngle = toDegree * Mathf.Deg2Rad;
@@ -1563,7 +1583,7 @@ namespace XUGL
                     p2 = UGLHelper.GetPos(center, outsideRadius, realStartOutAngle, false);
                     e2 = UGLHelper.GetPos(center, outsideRadius, realToOutAngle, false);
                 }
-                if (needBorder)
+                if (needBorder && !isCircle)
                 {
                     var borderDiff = borderWidth / Mathf.Sin(halfAngle);
                     realCenter += Mathf.Abs(borderDiff) * middleDire;
@@ -1677,10 +1697,14 @@ namespace XUGL
                 if (isGradient)
                 {
                     var tcolor = Color32.Lerp(color, toColor, i * 1.0f / segments);
+                    if (i == 0 && (needSpace || needBorder))
+                        UGL.DrawTriangle(vh, p1, p2, p3, color, tcolor, tcolor);
                     AddVertToVertexHelper(vh, p3, p4, tcolor, tcolor, i > 0);
                 }
                 else
                 {
+                    if (i == 0 && (needSpace || needBorder))
+                        UGL.DrawTriangle(vh, p1, p2, p3, color);
                     AddVertToVertexHelper(vh, p3, p4, color, color, i > 0);
                 }
                 p1 = p4;
@@ -1752,42 +1776,67 @@ namespace XUGL
         /// <param name="lineWidth">曲线宽</param>
         /// <param name="lineColor">曲线颜色</param>
         public static void DrawCurves(VertexHelper vh, Vector3 sp, Vector3 ep, Vector3 cp1, Vector3 cp2,
-            float lineWidth, Color32 lineColor, float smoothness)
+            float lineWidth, Color32 lineColor, float smoothness, Direction dire = Direction.XAxis)
         {
             var dist = Vector3.Distance(sp, ep);
-            var segment = (int)(dist / (smoothness <= 0 ? 2f : smoothness));
+            var segment = (int) (dist / (smoothness <= 0 ? 2f : smoothness));
             UGLHelper.GetBezierList2(ref s_CurvesPosList, sp, ep, segment, cp1, cp2);
-            DrawCurvesInternal(vh, s_CurvesPosList, lineWidth, lineColor);
+            DrawCurvesInternal(vh, s_CurvesPosList, lineWidth, lineColor, dire);
         }
 
+        /// <summary>
+        /// 画贝塞尔曲线
+        /// </summary>
+        /// <param name="vh"></param>
+        /// <param name="points">坐标点列表</param>
+        /// <param name="width">曲线宽</param>
+        /// <param name="color">曲线颜色</param>
+        /// <param name="smoothStyle">曲线样式</param>
+        /// <param name="smoothness">平滑度</param>
+        /// <param name="dire">曲线方向</param>
+        /// <param name="currProgress">当前绘制进度</param>
+        /// <param name="closed">曲线是否闭合</param>
         public static void DrawCurves(VertexHelper vh, List<Vector3> points, float width, Color32 color,
-            float smoothness, float currProgress = float.PositiveInfinity, bool isYAxis = false)
+            float smoothStyle, float smoothness, Direction dire, float currProgress = float.NaN,
+            bool closed = false)
         {
-            for (int i = 0; i < points.Count - 1; i++)
+            var count = points.Count;
+            var size = (closed?count : count - 1);
+            if (closed)
+                dire = Direction.Random;
+            for (int i = 0; i < size; i++)
             {
                 var sp = points[i];
-                var ep = points[i + 1];
-                var lsp = i > 0 ? points[i - 1] : sp;
-                var nep = i < points.Count - 2 ? points[i + 2] : ep;
+                var ep = closed?(i == size - 1 ? points[0] : points[i + 1]) : points[i + 1];
+                var lsp = i > 0 ? points[i - 1] : (closed?points[count - 1] : sp);
+                var nep = i < points.Count - 2 ? points[i + 2] : (closed?points[(i + 2) % count] : ep);
                 var smoothness2 = smoothness;
-                if (currProgress != float.PositiveInfinity)
+                if (currProgress != float.NaN)
                 {
-                    if (isYAxis)
-                        smoothness2 = ep.y <= currProgress ? smoothness : smoothness * 0.5f;
-                    else
-                        smoothness2 = ep.x <= currProgress ? smoothness : smoothness * 0.5f;
+                    switch (dire)
+                    {
+                        case Direction.XAxis:
+                            smoothness2 = ep.x <= currProgress ? smoothness : smoothness * 0.5f;
+                            break;
+                        case Direction.YAxis:
+                            smoothness2 = ep.y <= currProgress ? smoothness : smoothness * 0.5f;
+                            break;
+                        case Direction.Random:
+                            smoothness2 = smoothness * 0.5f;
+                            break;
+                    }
                 }
-                if (isYAxis)
-                    UGLHelper.GetBezierListVertical(ref s_CurvesPosList, sp, ep, smoothness2);
+                if (dire == Direction.YAxis)
+                    UGLHelper.GetBezierListVertical(ref s_CurvesPosList, sp, ep, smoothness2, smoothStyle);
                 else
-                    UGLHelper.GetBezierList(ref s_CurvesPosList, sp, ep, lsp, nep, smoothness2);
+                    UGLHelper.GetBezierList(ref s_CurvesPosList, sp, ep, lsp, nep, smoothness2, smoothStyle, false, dire == Direction.Random);
 
-                DrawCurvesInternal(vh, s_CurvesPosList, width, color, currProgress, isYAxis);
+                DrawCurvesInternal(vh, s_CurvesPosList, width, color, dire, currProgress);
             }
         }
 
         private static void DrawCurvesInternal(VertexHelper vh, List<Vector3> curvesPosList, float lineWidth,
-            Color32 lineColor, float currProgress = float.PositiveInfinity, bool isYAxis = false)
+            Color32 lineColor, Direction dire, float currProgress = float.NaN)
         {
             if (curvesPosList.Count > 1)
             {
@@ -1805,11 +1854,11 @@ namespace XUGL
                 for (int i = 1; i < curvesPosList.Count; i++)
                 {
                     to = curvesPosList[i];
-                    if (currProgress != float.PositiveInfinity)
+                    if (currProgress != float.NaN)
                     {
-                        if (isYAxis && to.y > currProgress)
+                        if (dire == Direction.YAxis && to.y > currProgress)
                             break;
-                        if (!isYAxis && to.x > currProgress)
+                        if (dire == Direction.XAxis && to.x > currProgress)
                             break;
                     }
 
@@ -1895,6 +1944,26 @@ namespace XUGL
                 }
                 i++;
                 angle += smoothness;
+            }
+        }
+
+        /// <summary>
+        /// 填充任意多边形（目前只支持凸多边形）
+        /// </summary>
+        /// <param name="vh"></param>
+        /// <param name="points"></param>
+        /// <param name="color"></param>
+        public static void DrawPolygon(VertexHelper vh, List<Vector3> points, Color32 color)
+        {
+            if (points.Count < 3 || UGLHelper.IsClearColor(color)) return;
+            var cv = vh.currentVertCount;
+            foreach (var pos in points)
+            {
+                vh.AddVert(pos, color, Vector2.zero);
+            }
+            for (int i = 2; i < points.Count; i++)
+            {
+                vh.AddTriangle(cv, cv + i - 1, cv + i);
             }
         }
     }

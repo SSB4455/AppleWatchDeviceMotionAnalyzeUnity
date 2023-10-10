@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,9 +7,21 @@ namespace XCharts.Runtime
     public class AxisContext : MainComponentContext
     {
         public Orient orient;
+        /// <summary>
+        /// 坐标轴的起点X
+        /// </summary>
         public float x;
+        /// <summary>
+        /// 坐标轴的起点Y
+        /// </summary>
         public float y;
+        /// <summary>
+        /// 坐标轴原点X
+        /// </summary>
         public float zeroX;
+        /// <summary>
+        /// 坐标轴原点Y
+        /// </summary>
         public float zeroY;
         public float width;
         public float height;
@@ -35,14 +46,21 @@ namespace XCharts.Runtime
         /// </summary>
         public float offset;
         public double minMaxRange;
+        /// <summary>
+        /// the tick value of value axis.
+        /// |数值轴时每个tick的数值。
+        /// </summary>
+        public double tickValue;
         public float scaleWidth;
         public float startAngle;
         public double pointerValue;
         public Vector3 pointerLabelPosition;
         public double axisTooltipValue;
+        public TextAnchor aligment;
         public List<string> runtimeData { get { return m_RuntimeData; } }
         public List<double> labelValueList { get { return m_LabelValueList; } }
         public List<ChartLabel> labelObjectList { get { return m_AxisLabelList; } }
+        public int dataZoomStartIndex;
 
         internal List<string> filterData;
         internal bool lastCheckInverse;
@@ -55,7 +73,6 @@ namespace XCharts.Runtime
         private List<ChartLabel> m_AxisLabelList = new List<ChartLabel>();
         private List<double> m_LabelValueList = new List<double>();
         private List<string> m_RuntimeData = new List<string>();
-
 
         internal void Clear()
         {
@@ -76,21 +93,21 @@ namespace XCharts.Runtime
 
             if (dataZoom.context.invert)
             {
-                end = Mathf.CeilToInt(data.Count * dataZoom.end / 100);
+                end = Mathf.RoundToInt(data.Count * dataZoom.end / 100);
                 start = end - range;
                 if (start < 0) start = 0;
             }
             else
             {
-                start = Mathf.FloorToInt(data.Count * dataZoom.start / 100);
+                start = Mathf.RoundToInt(data.Count * dataZoom.start / 100);
                 end = start + range;
                 if (end > data.Count) end = data.Count;
             }
 
-            if (start != filterStart
-                || end != filterEnd
-                || dataZoom.minShowNum != filterMinShow
-                || isNeedUpdateFilterData)
+            if (start != filterStart ||
+                end != filterEnd ||
+                dataZoom.minShowNum != filterMinShow ||
+                isNeedUpdateFilterData)
             {
                 filterStart = start;
                 filterEnd = end;
@@ -106,20 +123,28 @@ namespace XCharts.Runtime
                         else
                             range = dataZoom.minShowNum;
                     }
-                    if (range > data.Count - start - 1)
-                        start = data.Count - range - 1;
+                    if (range > data.Count - start)
+                        start = data.Count - range;
                     if (start >= 0)
+                    {
+                        dataZoomStartIndex = start;
                         filterData = data.GetRange(start, range);
+                    }
                     else
+                    {
+                        dataZoomStartIndex = 0;
                         filterData = data;
+                    }
                 }
                 else
                 {
+                    dataZoomStartIndex = 0;
                     filterData = data;
                 }
             }
             else if (end == 0)
             {
+                dataZoomStartIndex = 0;
                 filterData = m_EmptyFliter;
             }
         }

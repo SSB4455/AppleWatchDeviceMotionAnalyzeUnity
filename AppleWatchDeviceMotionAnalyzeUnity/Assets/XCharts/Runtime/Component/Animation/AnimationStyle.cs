@@ -1,7 +1,6 @@
-﻿
+using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 
 namespace XCharts.Runtime
 {
@@ -29,7 +28,7 @@ namespace XCharts.Runtime
         InsideOut,
         /// <summary>
         /// Play the animation along the path.
-        /// |沿着路径播放动画。
+        /// |沿着路径播放动画。当折线图从左到右无序或有折返时，可以使用该模式。
         /// </summary>
         AlongPath,
         /// <summary>
@@ -62,7 +61,7 @@ namespace XCharts.Runtime
         [SerializeField] private bool m_DataChangeEnable = true;
         [SerializeField] private float m_DataChangeDuration = 500;
         [SerializeField] private float m_ActualDuration;
-        [SerializeField] private bool m_AlongWithLinePath;
+        [SerializeField][Since("v3.4.0")] private bool m_UnscaledTime;
         /// <summary>
         /// 自定义渐入动画延时函数。返回ms值。
         /// </summary>
@@ -95,7 +94,7 @@ namespace XCharts.Runtime
         /// Easing method used for the first animation.
         /// |动画的缓动效果。
         /// </summary>
-        //public Easing easing { get { return m_Easting; } set { m_Easting = value; } }
+        //public Easing easting { get { return m_Easting; } set { m_Easting = value; } }
         /// <summary>
         /// The milliseconds duration of the fadeIn animation.
         /// |设定的渐入动画时长（毫秒）。如果要设置单个数据项的渐入时长，可以用代码定制：customFadeInDuration。
@@ -134,6 +133,11 @@ namespace XCharts.Runtime
         /// |数据变更的动画时长（毫秒）。
         /// </summary>
         public float dataChangeDuration { get { return m_DataChangeDuration; } set { m_DataChangeDuration = value < 0 ? 0 : value; } }
+        /// <summary>
+        /// Animation updates independently of Time.timeScale.
+        /// |动画是否受TimeScaled的影响。默认为 false 受TimeScaled的影响。
+        /// </summary>
+        public bool unscaledTime { get { return m_UnscaledTime; } set { m_UnscaledTime = value; } }
         /// <summary>
         /// 渐入动画完成回调
         /// </summary>
@@ -233,7 +237,7 @@ namespace XCharts.Runtime
             if (m_IsEnd)
                 return;
 
-            m_ActualDuration = (int)((Time.time - startTime) * 1000) - (m_FadeOut ? fadeOutDelay : fadeInDelay);
+            m_ActualDuration = (int) ((Time.time - startTime) * 1000) - (m_FadeOut ? fadeOutDelay : fadeInDelay);
             m_IsEnd = true;
             m_IsInit = false;
 
@@ -270,8 +274,6 @@ namespace XCharts.Runtime
         public void InitProgress(float curr, float dest)
         {
             if (m_IsInit || m_IsEnd)
-                return;
-            if (curr > dest)
                 return;
 
             m_IsInit = true;
@@ -352,9 +354,11 @@ namespace XCharts.Runtime
 #endif
             if (!m_Enable || m_IsEnd)
                 return true;
-
             if (IsIndexAnimation())
-                return m_CurrDetailProgress > m_DestDetailProgress;
+            {
+                if (m_FadeOut) return m_CurrDetailProgress <= m_DestDetailProgress;
+                else return m_CurrDetailProgress > m_DestDetailProgress;
+            }
             if (IsItemAnimation())
                 return false;
             return true;
@@ -380,9 +384,9 @@ namespace XCharts.Runtime
 
         public bool IsIndexAnimation()
         {
-            return context.type == AnimationType.LeftToRight
-                || context.type == AnimationType.Clockwise
-                || context.type == AnimationType.AlongPath;
+            return context.type == AnimationType.LeftToRight ||
+                context.type == AnimationType.Clockwise ||
+                context.type == AnimationType.AlongPath;
         }
 
         public float GetIndexDelay(int dataIndex)
@@ -462,9 +466,9 @@ namespace XCharts.Runtime
             if (IsInDelay())
                 return;
 
-            m_ActualDuration = (int)((Time.time - startTime) * 1000) - fadeInDelay;
+            m_ActualDuration = (int) ((Time.time - startTime) * 1000) - fadeInDelay;
             var duration = GetCurrAnimationDuration();
-            var delta = (float)(total / duration * Time.deltaTime);
+            var delta = (float) (total / duration * (m_UnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime));
             if (m_FadeOut)
             {
                 m_CurrDetailProgress -= delta;
@@ -522,7 +526,7 @@ namespace XCharts.Runtime
             else
             {
                 var duration = GetCurrAnimationDuration(dataIndex);
-                var delta = (destProgress - startProgress) / duration * Time.deltaTime;
+                var delta = (destProgress - startProgress) / duration * (m_UnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime);
                 currHig = currHig + (m_FadeOut ? -delta : delta);
                 if (m_FadeOut)
                 {
@@ -534,8 +538,8 @@ namespace XCharts.Runtime
                 }
                 else
                 {
-                    if ((destProgress - startProgress > 0 && currHig > destProgress)
-                        || (destProgress - startProgress < 0 && currHig < destProgress))
+                    if ((destProgress - startProgress > 0 && currHig > destProgress) ||
+                        (destProgress - startProgress < 0 && currHig < destProgress))
                     {
                         currHig = destProgress;
                         isEnd = true;
@@ -555,7 +559,7 @@ namespace XCharts.Runtime
                 return;
 
             var duration = GetCurrAnimationDuration();
-            var delta = dest / duration * Time.deltaTime;
+            var delta = dest / duration * (m_UnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime);
             if (m_FadeOut)
             {
                 m_CurrSymbolProgress -= delta;
@@ -613,12 +617,12 @@ namespace XCharts.Runtime
 #endif
             if (!enable || m_IsEnd)
                 return -1;
-            return (int)m_CurrDetailProgress;
+            return (int) m_CurrDetailProgress;
         }
 
         public float GetUpdateAnimationDuration()
         {
-            if (m_Enable && m_DataChangeEnable && IsFinish())
+            if (m_Enable && m_DataChangeEnable)
                 return m_DataChangeDuration;
             else
                 return 0;

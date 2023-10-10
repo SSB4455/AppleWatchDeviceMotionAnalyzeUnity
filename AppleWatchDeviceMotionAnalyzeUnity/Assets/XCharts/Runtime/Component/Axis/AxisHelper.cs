@@ -20,6 +20,22 @@ namespace XCharts.Runtime
         }
 
         /// <summary>
+        /// 获得分割网格个数，包含次刻度
+        /// </summary>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        public static int GetTotalSplitGridNum(Axis axis)
+        {
+            if (axis.IsCategory())
+                return axis.data.Count;
+            else
+            {
+                var splitNum = axis.splitNumber <= 0 ? GetSplitNumber(axis, 0, null) : axis.splitNumber;
+                return splitNum * axis.minorTick.splitNumber;
+            }
+        }
+
+        /// <summary>
         /// 获得分割段数
         /// </summary>
         /// <param name="dataZoom"></param>
@@ -48,15 +64,11 @@ namespace XCharts.Runtime
 
                 if (axis.splitNumber <= 0)
                 {
-                    if (dataCount <= 10) return dataCount;
-                    else
-                    {
-                        for (int i = 4; i < 6; i++)
-                        {
-                            if (dataCount % i == 0) return i;
-                        }
-                        return 5;
-                    }
+                    var eachWid = coordinateWid / dataCount;
+                    var min = axis is YAxis ? 20 : 80;
+                    if (eachWid > min) return dataCount;
+                    var tick = Mathf.CeilToInt(min / eachWid);
+                    return (int)(dataCount / tick);
                 }
                 else
                 {
@@ -126,9 +138,9 @@ namespace XCharts.Runtime
             }
             else if (axis.type == Axis.AxisType.Log)
             {
-                float value = axis.logBaseE
-                    ? Mathf.Exp(axis.GetLogMinIndex() + index)
-                    : Mathf.Pow(axis.logBase, axis.GetLogMinIndex() + index);
+                double value = axis.logBaseE ?
+                    System.Math.Exp(axis.GetLogMinIndex() + index) :
+                    System.Math.Pow(axis.logBase, axis.GetLogMinIndex() + index);
                 if (axis.inverse)
                 {
                     value = -value;
@@ -180,7 +192,8 @@ namespace XCharts.Runtime
                 }
                 else
                 {
-                    if (axis.boundaryGap && coordinateWidth / dataCount > 5)
+                    var diff = newIndex - dataCount;
+                    if (axis.boundaryGap && ((diff > 0 && diff / rate < 0.4f) || dataCount >= axis.data.Count))
                         return string.Empty;
                     else
                         return axis.axisLabel.GetFormatterContent(dataCount - 1, showData[dataCount - 1]);
@@ -206,16 +219,13 @@ namespace XCharts.Runtime
 
                 if (axis.boundaryGap)
                 {
-                    scaleNum = dataCount > 2 && dataCount % splitNum == 0
-                        ? splitNum + 1
-                        : splitNum + 2;
+                    scaleNum = dataCount > 1 && dataCount % splitNum == 0 ?
+                        splitNum + 1 :
+                        splitNum + 2;
                 }
                 else
                 {
-                    if (dataCount < splitNum) scaleNum = splitNum;
-                    else scaleNum = dataCount > 2 && dataCount % splitNum == 0
-                        ? splitNum
-                        : splitNum + 1;
+                    scaleNum = splitNum + 1;
                 }
                 return scaleNum;
             }
@@ -245,14 +255,13 @@ namespace XCharts.Runtime
             {
                 var value = axis.GetLabelValue(index);
                 var lastValue = axis.GetLabelValue(index - 1);
-                return axis.context.minMaxRange == 0
-                    ? 0
-                    : (float)(coordinateWidth * (value - lastValue) / axis.context.minMaxRange);
+                return axis.context.minMaxRange == 0 ? 0 :
+                    (float)(coordinateWidth * (value - lastValue) / axis.context.minMaxRange);
             }
             else
             {
                 var data = axis.GetDataList(dataZoom);
-                if (axis.IsCategory() && data.Count > 0)
+                if (axis.IsCategory() && data.Count > 0 && splitNum > 0)
                 {
                     var count = axis.boundaryGap ? data.Count : data.Count - 1;
                     int tick = count / splitNum;
@@ -327,7 +336,7 @@ namespace XCharts.Runtime
         /// </summary>
         /// <param name="minValue"></param>
         /// <param name="maxValue"></param>
-        public static void AdjustMinMaxValue(Axis axis, ref double minValue, ref double maxValue, bool needFormat, int ceilRate = 0)
+        public static void AdjustMinMaxValue(Axis axis, ref double minValue, ref double maxValue, bool needFormat, double ceilRate = 0)
         {
             if (axis.type == Axis.AxisType.Log)
             {
@@ -335,12 +344,13 @@ namespace XCharts.Runtime
                 int maxSplit = 0;
                 maxValue = ChartHelper.GetMaxLogValue(maxValue, axis.logBase, axis.logBaseE, out maxSplit);
                 minValue = ChartHelper.GetMinLogValue(minValue, axis.logBase, axis.logBaseE, out minSplit);
-                axis.splitNumber = (minSplit > 0 && maxSplit > 0) ? (maxSplit + minSplit - 1) : (maxSplit + minSplit);
+                var splitNumber = (minSplit > 0 && maxSplit > 0) ? (maxSplit + minSplit - 1) : (maxSplit + minSplit);
+                if (splitNumber > 15)
+                    splitNumber = 15;
+                axis.splitNumber = splitNumber;
                 return;
             }
-            if (axis.type == Axis.AxisType.Time)
-            {
-            }
+            if (axis.type == Axis.AxisType.Time) { }
             else if (axis.minMaxType == Axis.AxisMinMaxType.Custom)
             {
                 if (axis.min != 0 || axis.max != 0)
@@ -364,9 +374,7 @@ namespace XCharts.Runtime
                 {
                     case Axis.AxisMinMaxType.Default:
 
-                        if (minValue == 0 && maxValue == 0)
-                        {
-                        }
+                        if (minValue == 0 && maxValue == 0) { }
                         else if (minValue > 0 && maxValue > 0)
                         {
                             minValue = 0;
@@ -385,9 +393,16 @@ namespace XCharts.Runtime
                         break;
 
                     case Axis.AxisMinMaxType.MinMax:
+                        if (ceilRate != 0)
+                        {
+                            minValue = ChartHelper.GetMinCeilRate(minValue, ceilRate);
+                            maxValue = ChartHelper.GetMaxCeilRate(maxValue, ceilRate);
+                        }
+                        break;
 
-                        minValue = ceilRate != 0 ? ChartHelper.GetMinDivisibleValue(minValue, ceilRate) : minValue;
-                        maxValue = ceilRate != 0 ? ChartHelper.GetMaxDivisibleValue(maxValue, ceilRate) : maxValue;
+                    case Axis.AxisMinMaxType.MinMaxAuto:
+                        minValue = needFormat ? ChartHelper.GetMinDivisibleValue(minValue, ceilRate) : minValue;
+                        maxValue = needFormat ? ChartHelper.GetMaxDivisibleValue(maxValue, ceilRate) : maxValue;
                         break;
                 }
             }
@@ -464,7 +479,6 @@ namespace XCharts.Runtime
                 var yDataHig = (axis.context.minMaxRange == 0) ? 0f :
                     (float)((value - axis.context.minValue) / axis.context.minMaxRange * gridHeight);
                 return gridXY + yDataHig;
-
             }
         }
 
@@ -523,6 +537,34 @@ namespace XCharts.Runtime
             return GetAxisPositionInternal(grid, axis, scaleWidth, value, false, true);
         }
 
+        /// <summary>
+        /// 获得数值value在坐标轴上对应的split索引
+        /// </summary>
+        /// <param name="axis"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static int GetAxisValueSplitIndex(Axis axis, double value, int totalSplitNumber = -1)
+        {
+            if (axis.IsCategory())
+            {
+                return (int)value;
+            }
+            else
+            {
+                if (value == axis.context.minValue)
+                    return 0;
+                else
+                {
+                    if (totalSplitNumber == -1)
+                        totalSplitNumber = GetTotalSplitGridNum(axis);
+                    if (axis.minMaxType == Axis.AxisMinMaxType.Custom)
+                        return Mathf.CeilToInt(((float)((value - axis.min) / axis.max) * totalSplitNumber) - 1);
+                    else
+                        return Mathf.CeilToInt(((float)((value - axis.context.minValue) / axis.context.minMaxRange) * totalSplitNumber) - 1);
+                }
+            }
+        }
+
         private static float GetAxisPositionInternal(GridCoord grid, Axis axis, float scaleWidth, double value, bool includeGridXY, bool realLength)
         {
             var isY = axis is YAxis;
@@ -531,18 +573,18 @@ namespace XCharts.Runtime
 
             if (axis.IsLog())
             {
-                int minIndex = axis.GetLogMinIndex();
-                float nowIndex = axis.GetLogValue(value);
-                return includeGridXY
-                    ? gridXY + (nowIndex - minIndex) / axis.splitNumber * gridHeight
-                    : (nowIndex - minIndex) / axis.splitNumber * gridHeight;
+                var minIndex = axis.GetLogMinIndex();
+                var nowIndex = axis.GetLogValue(value);
+                return includeGridXY ?
+                    (float)(gridXY + (nowIndex - minIndex) / axis.splitNumber * gridHeight) :
+                    (float)((nowIndex - minIndex) / axis.splitNumber * gridHeight);
             }
             else if (axis.IsCategory())
             {
                 var categoryIndex = (int)value;
-                return includeGridXY
-                    ? gridXY + (axis.boundaryGap ? scaleWidth / 2 : 0) + scaleWidth * categoryIndex
-                    : (axis.boundaryGap ? scaleWidth / 2 : 0) + scaleWidth * categoryIndex;
+                return includeGridXY ?
+                    gridXY + (axis.boundaryGap ? scaleWidth / 2 : 0) + scaleWidth * categoryIndex :
+                    (axis.boundaryGap ? scaleWidth / 2 : 0) + scaleWidth * categoryIndex;
             }
             else
             {
@@ -554,10 +596,44 @@ namespace XCharts.Runtime
                     else
                         yDataHig = (float)((value - axis.context.minValue) / axis.context.minMaxRange * gridHeight);
                 }
-                return includeGridXY
-                    ? gridXY + yDataHig
-                    : yDataHig;
+                return includeGridXY ?
+                    gridXY + yDataHig :
+                    yDataHig;
             }
+        }
+
+        public static float GetAxisXOrY(GridCoord grid, Axis axis, Axis relativedAxis)
+        {
+            if (axis is XAxis)
+                return GetXAxisXOrY(grid, axis, relativedAxis);
+            else if (axis is YAxis)
+                return GetYAxisXOrY(grid, axis, relativedAxis);
+            else if (axis is SingleAxis)
+                return axis.context.y + axis.offset;
+            else if (axis is ParallelAxis)
+                return axis.context.y;
+            else
+                return axis.context.x;
+        }
+
+        public static float GetXAxisXOrY(GridCoord grid, Axis xAxis, Axis relativedAxis)
+        {
+            var startY = grid.context.y + xAxis.offset;
+            if (xAxis.IsTop())
+                startY += grid.context.height;
+            else if (xAxis.axisLine.onZero && relativedAxis.IsValue() && relativedAxis.gridIndex == xAxis.gridIndex)
+                startY += relativedAxis.context.offset;
+            return startY;
+        }
+
+        public static float GetYAxisXOrY(GridCoord grid, Axis yAxis, Axis relativedAxis)
+        {
+            var startX = grid.context.x + yAxis.offset;
+            if (yAxis.IsRight())
+                startX += grid.context.width;
+            else if (yAxis.axisLine.onZero && relativedAxis.IsValue() && relativedAxis.gridIndex == yAxis.gridIndex)
+                startX += relativedAxis.context.offset;
+            return startX;
         }
     }
 }

@@ -1,4 +1,3 @@
-﻿
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -15,8 +14,9 @@ namespace XCharts.Editor
         {
             public static readonly GUIContent btnAddSerie = new GUIContent("Add Serie", "");
             public static readonly GUIContent btnAddComponent = new GUIContent("Add Main Component", "");
-            public static readonly GUIContent btnCovertXYAxis = new GUIContent("Covert XY Axis", "");
+            public static readonly GUIContent btnConvertXYAxis = new GUIContent("Convert XY Axis", "");
             public static readonly GUIContent btnRebuildChartObject = new GUIContent("Rebuild Chart Object", "");
+            public static readonly GUIContent btnSaveAsImage = new GUIContent("Save As Image", "");
             public static readonly GUIContent btnCheckWarning = new GUIContent("Check Warning", "");
             public static readonly GUIContent btnHideWarning = new GUIContent("Hide Warning", "");
         }
@@ -45,7 +45,7 @@ namespace XCharts.Editor
         protected virtual void OnEnable()
         {
             if (target == null) return;
-            m_Chart = (BaseChart)target;
+            m_Chart = (BaseChart) target;
             m_Script = serializedObject.FindProperty("m_Script");
             m_EnableTextMeshPro = serializedObject.FindProperty("m_EnableTextMeshPro");
             m_ChartName = serializedObject.FindProperty("m_ChartName");
@@ -172,7 +172,7 @@ namespace XCharts.Editor
             {
                 m_Series.Add(prop.GetArrayElementAtIndex(i));
             }
-            m_Series.Sort(delegate (SerializedProperty a, SerializedProperty b)
+            m_Series.Sort(delegate(SerializedProperty a, SerializedProperty b)
             {
                 var index1 = a.FindPropertyRelative("m_Index").intValue;
                 var index2 = b.FindPropertyRelative("m_Index").intValue;
@@ -273,12 +273,16 @@ namespace XCharts.Editor
         {
             if (m_Chart.HasChartComponent<XAxis>() && m_Chart.HasChartComponent<YAxis>())
             {
-                if (GUILayout.Button(Styles.btnCovertXYAxis))
-                    m_Chart.CovertXYAxis(0);
+                if (GUILayout.Button(Styles.btnConvertXYAxis))
+                    m_Chart.ConvertXYAxis(0);
             }
             if (GUILayout.Button(Styles.btnRebuildChartObject))
             {
                 m_Chart.RebuildChartObject();
+            }
+            if (GUILayout.Button(Styles.btnSaveAsImage))
+            {
+                m_Chart.SaveAsImage();
             }
             if (m_CheckWarning)
             {

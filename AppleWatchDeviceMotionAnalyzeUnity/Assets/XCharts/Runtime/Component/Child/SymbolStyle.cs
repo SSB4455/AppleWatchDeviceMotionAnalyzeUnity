@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -151,6 +150,10 @@ namespace XCharts.Runtime
             get { return m_Image; }
             set { if (PropertyUtil.SetClass(ref m_Image, value)) SetAllDirty(); }
         }
+        /// <summary>
+        /// the fill type of image.
+        /// |图形填充类型。
+        /// </summary>
         public Image.Type imageType
         {
             get { return m_ImageType; }
@@ -179,7 +182,6 @@ namespace XCharts.Runtime
         /// |带有涟漪特效动画的散点图的动画参数。
         /// </summary>
         public List<float> animationSize { get { return m_AnimationSize; } }
-        
 
         public Color32 GetColor(Color32 defaultColor)
         {

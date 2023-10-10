@@ -1,6 +1,5 @@
-﻿
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace XCharts.Runtime
@@ -56,7 +55,7 @@ namespace XCharts.Runtime
             /// The name of indicator.
             /// |指示器名称。
             /// </summary>
-            public string name { get { return FormatterHelper.TrimAndReplaceLine(m_Name); } set { m_Name = value; } }
+            public string name { get { return m_Name; } set { m_Name = value; } }
             /// <summary>
             /// The maximum value of indicator, with default value of 0, but we recommend to set it manually.
             /// |指示器的最大值，默认为 0 无限制。
@@ -91,6 +90,7 @@ namespace XCharts.Runtime
                     return true;
             }
         }
+
         [SerializeField] private bool m_Show;
         [SerializeField] private Shape m_Shape;
         [SerializeField] private float m_Radius = 100;
@@ -103,11 +103,12 @@ namespace XCharts.Runtime
         [SerializeField] private bool m_Indicator = true;
         [SerializeField] private PositionType m_PositionType = PositionType.Vertice;
         [SerializeField] private float m_IndicatorGap = 10;
-        [SerializeField] private int m_CeilRate = 0;
+        [SerializeField] private double m_CeilRate = 0;
         [SerializeField] private bool m_IsAxisTooltip;
         [SerializeField] private Color32 m_OutRangeColor = Color.red;
         [SerializeField] private bool m_ConnectCenter = false;
         [SerializeField] private bool m_LineGradient = true;
+        [SerializeField][Since("v3.4.0")] private float m_StartAngle;
         [SerializeField] private List<Indicator> m_IndicatorList = new List<Indicator>();
 
         public RadarCoordContext context = new RadarCoordContext();
@@ -214,7 +215,7 @@ namespace XCharts.Runtime
         /// The ratio of maximum and minimum values rounded upward. The default is 0, which is automatically calculated.
         /// |最大最小值向上取整的倍率。默认为0时自动计算。
         /// </summary>
-        public int ceilRate
+        public double ceilRate
         {
             get { return m_CeilRate; }
             set { if (PropertyUtil.SetStruct(ref m_CeilRate, value < 0 ? 0 : value)) SetAllDirty(); }
@@ -264,6 +265,14 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetStruct(ref m_LineGradient, value)) SetAllDirty(); }
         }
         /// <summary>
+        /// 起始角度。和时钟一样，12点钟位置是0度，顺时针到360度。
+        /// </summary>
+        public float startAngle
+        {
+            get { return m_StartAngle; }
+            set { if (PropertyUtil.SetStruct(ref m_StartAngle, value)) SetVerticesDirty(); }
+        }
+        /// <summary>
         /// the indicator list.
         /// |指示器列表。
         /// </summary>
@@ -281,12 +290,13 @@ namespace XCharts.Runtime
             m_Radius = 0.35f;
             m_SplitNumber = 5;
             m_Indicator = true;
-            m_IndicatorList = new List<Indicator>(5){
-                new Indicator(){name="indicator1",max = 0},
-                new Indicator(){name="indicator2",max = 0},
-                new Indicator(){name="indicator3",max = 0},
-                new Indicator(){name="indicator4",max = 0},
-                new Indicator(){name="indicator5",max = 0},
+            m_IndicatorList = new List<Indicator>(5)
+            {
+                new Indicator() { name = "indicator1", max = 0 },
+                new Indicator() { name = "indicator2", max = 0 },
+                new Indicator() { name = "indicator3", max = 0 },
+                new Indicator() { name = "indicator4", max = 0 },
+                new Indicator() { name = "indicator5", max = 0 },
             };
             center[0] = 0.5f;
             center[1] = 0.4f;
@@ -373,6 +383,7 @@ namespace XCharts.Runtime
                     angle = 2 * Mathf.PI / indicatorNum * (index + 0.5f);
                     break;
             }
+            angle += startAngle * Mathf.PI / 180;
             var x = context.center.x + (context.radius + indicatorGap) * Mathf.Sin(angle);
             var y = context.center.y + (context.radius + indicatorGap) * Mathf.Cos(angle);
             return new Vector3(x, y);
@@ -384,7 +395,7 @@ namespace XCharts.Runtime
             SetAllDirty();
         }
 
-        public RadarCoord.Indicator AddIndicator(string name, float min, float max)
+        public RadarCoord.Indicator AddIndicator(string name, double min, double max)
         {
             var indicator = new RadarCoord.Indicator();
             indicator.name = name;
@@ -395,7 +406,14 @@ namespace XCharts.Runtime
             return indicator;
         }
 
-        public bool UpdateIndicator(int indicatorIndex, string name, float min, float max)
+        [Since("v3.3.0")]
+        public void AddIndicatorList(List<string> nameList, double min = 0, double max = 0)
+        {
+            foreach (var name in nameList)
+                AddIndicator(name, min, max);
+        }
+
+        public bool UpdateIndicator(int indicatorIndex, string name, double min, double max)
         {
             var indicator = GetIndicator(indicatorIndex);
             if (indicator == null) return false;
@@ -410,6 +428,13 @@ namespace XCharts.Runtime
         {
             if (indicatorIndex < 0 || indicatorIndex > indicatorList.Count - 1) return null;
             return indicatorList[indicatorIndex];
+        }
+
+        public string GetIndicatorName(int indicatorIndex)
+        {
+            var indicator = GetIndicator(indicatorIndex);
+            if (indicator == null) return string.Empty;
+            return indicator.name;
         }
 
         public override void ClearData()

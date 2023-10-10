@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -6,7 +5,9 @@ namespace XCharts.Runtime
     [System.Serializable]
     [SerieHandler(typeof(CandlestickHandler), true)]
     [DefaultAnimation(AnimationType.LeftToRight)]
-    [SerieExtraComponent()]
+    [SerieComponent()]
+    [SerieDataComponent(typeof(ItemStyle), typeof(EmphasisStyle), typeof(BlurStyle), typeof(SelectStyle))]
+    [SerieDataExtraField()]
     public class Candlestick : Serie, INeedSerieContainer
     {
         public int containerIndex { get; internal set; }
@@ -21,7 +22,7 @@ namespace XCharts.Runtime
                 var close = Random.Range(40, 90);
                 var lowest = Random.Range(0, 50);
                 var heighest = Random.Range(50, 100);
-                chart.AddData(serie.index, open, close, lowest, heighest);
+                chart.AddData(serie.index, i, open, close, lowest, heighest);
             }
             return serie;
         }

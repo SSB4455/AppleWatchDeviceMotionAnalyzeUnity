@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ namespace XCharts.Runtime
 
         public static string CheckChart(BaseGraph chart)
         {
-            if (chart is BaseChart) return CheckChart((BaseChart)chart);
+            if (chart is BaseChart) return CheckChart((BaseChart) chart);
             else return string.Empty;
         }
 
@@ -67,28 +68,35 @@ namespace XCharts.Runtime
             // }
         }
 
-        private static void CheckLegend(BaseChart chart, StringBuilder sb)
-        {
-        }
+        private static void CheckLegend(BaseChart chart, StringBuilder sb) { }
 
-        private static void CheckGrid(BaseChart chart, StringBuilder sb)
-        {
-        }
+        private static void CheckGrid(BaseChart chart, StringBuilder sb) { }
 
         private static void CheckSerie(BaseChart chart, StringBuilder sb)
         {
             var allDataIsEmpty = true;
             var allDataIsZero = true;
             var allSerieIsHide = true;
+            var set = new HashSet<int>();
             foreach (var serie in chart.series)
             {
                 if (serie.show) allSerieIsHide = false;
                 if (serie.dataCount > 0)
                 {
                     allDataIsEmpty = false;
+                    var dataIndexError = 0;
+                    set.Clear();
                     for (int i = 0; i < serie.dataCount; i++)
                     {
                         var serieData = serie.GetSerieData(i);
+                        if (set.Contains(serieData.index))
+                        {
+                            dataIndexError++;
+                        }
+                        else
+                        {
+                            set.Add(serieData.index);
+                        }
                         for (int j = 1; j < serieData.data.Count; j++)
                         {
                             if (serieData.GetData(j) != 0)
@@ -102,6 +110,10 @@ namespace XCharts.Runtime
                     if (serie.showDataDimension > 1 && serie.showDataDimension != dataCount)
                     {
                         sb.AppendFormat("warning:serie {0} serieData.data.count[{1}] not match showDataDimension[{2}]\n", serie.index, dataCount, serie.showDataDimension);
+                    }
+                    if (dataIndexError > 0)
+                    {
+                        sb.AppendFormat("error: data index error, count={0}/{1}\n", dataIndexError, serie.dataCount);
                     }
                 }
                 else
@@ -120,11 +132,6 @@ namespace XCharts.Runtime
                         sb.AppendFormat("warning:serie {0} lineStyle->opacity is 0\n", serie.index);
                     if (IsColorAlphaZero(serie.lineStyle.color))
                         sb.AppendFormat("warning:serie {0} lineStyle->color alpha is 0\n", serie.index);
-                }
-                else if (serie is Bar)
-                {
-                    if (serie.barWidth == 0)
-                        sb.AppendFormat("warning:serie {0} barWidth is 0\n", serie.index);
                 }
                 else if (serie is Pie)
                 {

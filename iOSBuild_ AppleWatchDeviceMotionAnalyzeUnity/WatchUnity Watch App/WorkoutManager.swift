@@ -22,8 +22,11 @@ class WorkoutManager: NSObject, ObservableObject {
         manager.deviceMotionUpdateInterval = 0.03
         return manager
     }()
-    
-    @Published var shotCount = 0
+    @Published var frequency: Int = 30 {
+        didSet {
+            motionManager.deviceMotionUpdateInterval = 1 / Double(frequency)
+        }
+    }
     @Published var userAcceleration = CMAcceleration()
     @Published var gravity = CMAcceleration()
     @Published var attitude = CMAttitude()
@@ -31,11 +34,6 @@ class WorkoutManager: NSObject, ObservableObject {
     @Published var heading = Double()
     @Published var rotationRate = CMRotationRate()
     @Published var sensorLocation = CMDeviceMotion.SensorLocation(rawValue: 0)
-    @Published var frequency: Int = 30 {
-        didSet {
-            motionManager.deviceMotionUpdateInterval = 1 / Double(frequency)
-        }
-    }
     @Published var syncToPhone = true
     @Published var isRecording = false {
         didSet {
@@ -58,7 +56,7 @@ class WorkoutManager: NSObject, ObservableObject {
     var getDataTypeFunc = { (data: CMDeviceMotion) -> () in }
     
     enum DeviceMotionType {
-        case userAcceleration, gravity, attitude, magneticField, heading, rotationRate, sensorLocation
+        case userAcc, gravity, attitude, magneticField, heading, rotationRate, sensorLocation
     }
     
     
@@ -109,34 +107,35 @@ class WorkoutManager: NSObject, ObservableObject {
             self.rotationRate = data!.rotationRate
             self.attitude = data!.attitude
             
+            var frameData: [String : Any] = [
+                "ts": timestamp,
+                "gravity":
+                    [String(Int(self.gravity.x * 1000), radix: 16),
+                     String(Int(self.gravity.y * 1000), radix: 16),
+                     String(Int(self.gravity.z * 1000), radix: 16)],
+                "userAcc":
+                    [String(Int(self.userAcceleration.x * 1000), radix: 16),
+                     String(Int(self.userAcceleration.y * 1000), radix: 16),
+                     String(Int(self.userAcceleration.z * 1000), radix: 16)],
+                "rotaRate":
+                    [String(Int(self.rotationRate.x * 1000), radix: 16),
+                     String(Int(self.rotationRate.y * 1000), radix: 16),
+                     String(Int(self.rotationRate.z * 1000), radix: 16)],
+                "attitude_rpy":
+                    [String(Int(self.attitude.roll * 1000), radix: 16),
+                     String(Int(self.attitude.pitch * 1000), radix: 16),
+                     String(Int(self.attitude.yaw * 1000), radix: 16)],
+                "attitude_q":
+                    [String(Int(self.attitude.quaternion.x * 1000), radix: 16),
+                     String(Int(self.attitude.quaternion.y * 1000), radix: 16),
+                     String(Int(self.attitude.quaternion.z * 1000), radix: 16),
+                     String(Int(self.attitude.quaternion.w * 1000), radix: 16)]]
+        
+            if self.syncToPhone {
+                self.sendMessageToiPhone(frameData);
+            }
             if self.isRecording {
-                var frameData: [String : Any] = [
-                    "timestamp": timestamp,
-                    "gravity": ["type": "Vector3_16", "value":
-                        [String(Int(self.gravity.x * 1000), radix: 16),
-                         String(Int(self.gravity.y * 1000), radix: 16),
-                         String(Int(self.gravity.z * 1000), radix: 16)]] as [String : Any],
-                    "userAcceleration": ["type": "Vector3_16", "value":
-                        [String(Int(self.userAcceleration.x * 1000), radix: 16),
-                         String(Int(self.userAcceleration.y * 1000), radix: 16),
-                         String(Int(self.userAcceleration.z * 1000), radix: 16)]] as [String : Any],
-                    "rotationRate": ["type": "Vector3_16", "value":
-                        [String(Int(self.rotationRate.x * 1000), radix: 16),
-                         String(Int(self.rotationRate.y * 1000), radix: 16),
-                         String(Int(self.rotationRate.z * 1000), radix: 16)]] as [String : Any],
-                    "attitude_roll,pitch,yaw": ["type": "Vector3_16", "value":
-                        [String(Int(self.attitude.roll * 1000), radix: 16),
-                         String(Int(self.attitude.pitch * 1000), radix: 16),
-                         String(Int(self.attitude.yaw * 1000), radix: 16)]] as [String : Any],
-                    "attitude_quaternion": ["type": "Quaternion_16", "value":
-                        [String(Int(self.attitude.quaternion.x * 1000), radix: 16),
-                         String(Int(self.attitude.quaternion.y * 1000), radix: 16),
-                         String(Int(self.attitude.quaternion.z * 1000), radix: 16),
-                         String(Int(self.attitude.quaternion.w * 1000), radix: 16)]] as [String : Any]]
                 self.recordData += "\(frameData)"
-                if self.syncToPhone {
-                    self.sendMessageToiPhone(frameData);
-                }
             }
         }
         sendMessageToiPhone(["Watch": "startMotionUpdate"])
@@ -146,7 +145,7 @@ class WorkoutManager: NSObject, ObservableObject {
         var types = [DeviceMotionType]()
         for data1 in datas {
             if (data1.contains("acc")) {
-                types.append(.userAcceleration)
+                types.append(.userAcc)
                 
             }
             
@@ -156,7 +155,7 @@ class WorkoutManager: NSObject, ObservableObject {
             print("sdfasdf")
             for type1 in types {
                 switch type1 {
-                case .userAcceleration:
+                case .userAcc:
                     self.userAcceleration = data.userAcceleration
                 case .gravity:
                     self.gravity = data.gravity

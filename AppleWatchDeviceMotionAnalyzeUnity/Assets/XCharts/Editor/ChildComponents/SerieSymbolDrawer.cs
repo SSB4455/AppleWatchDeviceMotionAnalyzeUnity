@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -20,6 +19,7 @@ namespace XCharts.Editor
                 PropertyField(prop, "m_Type");
                 if (type == SymbolType.Custom)
                 {
+                    AddHelpBox("Custom symbol only work in PictorialBar serie", MessageType.Warning);
                     PropertyField(prop, "m_Image");
                     PropertyField(prop, "m_ImageType");
                     PropertyField(prop, "m_Width");
@@ -32,12 +32,12 @@ namespace XCharts.Editor
                 {
                     case SymbolSizeType.Custom:
                         PropertyField(prop, "m_Size");
-                        PropertyField(prop, "m_SelectedSize");
                         break;
                     case SymbolSizeType.FromData:
                         PropertyField(prop, "m_DataIndex");
                         PropertyField(prop, "m_DataScale");
-                        PropertyField(prop, "m_SelectedDataScale");
+                        PropertyField(prop, "m_MinSize");
+                        PropertyField(prop, "m_MaxSize");
                         break;
                     case SymbolSizeType.Function:
                         break;

@@ -1,6 +1,6 @@
-﻿
-using UnityEngine;
 using System;
+using System.Collections;
+using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace XCharts.Runtime
@@ -37,6 +37,11 @@ namespace XCharts.Runtime
         /// </summary>
         public Vector3 graphPosition { get { return m_GraphPosition; } }
         public Rect graphRect { get { return m_GraphRect; } }
+        public Vector2 graphSizeDelta { get { return m_GraphSizeDelta; } }
+        public Vector2 graphPivot { get { return m_GraphPivot; } }
+        public Vector2 graphMinAnchor { get { return m_GraphMinAnchor; } }
+        public Vector2 graphMaxAnchor { get { return m_GraphMaxAnchor; } }
+        public Vector2 graphAnchoredPosition { get { return m_GraphAnchoredPosition; } }
         /// <summary>
         /// The postion of pointer.
         /// |鼠标位置。
@@ -46,7 +51,8 @@ namespace XCharts.Runtime
         /// Whether the mouse pointer is in the chart.
         /// |鼠标是否在图表内。
         /// </summary>
-        public bool isPointerInChart { get; protected set; }
+        public bool isPointerInChart
+        { get { return m_PointerEventData != null; } }
         /// <summary>
         /// 警告信息。
         /// </summary>
@@ -121,7 +127,7 @@ namespace XCharts.Runtime
         /// Redraw graph in next frame.
         /// |在下一帧刷新图形。
         /// </summary>
-        public void RefreshGraph()
+        public virtual void RefreshGraph()
         {
             m_RefreshChart = true;
         }
@@ -155,16 +161,58 @@ namespace XCharts.Runtime
         {
 #if UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX
             var relative = Display.RelativeMouseAt(screenPoint);
-            if(relative != Vector3.zero)
+            if (relative != Vector3.zero)
                 screenPoint = relative;
 #endif
             var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform,
-                screenPoint, cam, out chartPoint))
+                    screenPoint, cam, out chartPoint))
             {
                 return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// chart local point to screen point.
+        /// |图表内坐标转屏幕坐标。
+        /// </summary>
+        /// <param name="localPoint">图表内的坐标</param>
+        /// <returns>屏幕坐标</returns>
+        [Since("v3.7.0")]
+        public Vector2 LocalPointToScreenPoint(Vector2 localPoint)
+        {
+            var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            var wordPoint = rectTransform.TransformPoint(localPoint);
+            return RectTransformUtility.WorldToScreenPoint(cam, wordPoint);
+        }
+
+        /// <summary>
+        /// chart local point to world point.
+        /// |图表内坐标转世界坐标。
+        /// </summary>
+        /// <param name="localPoint">图表内的坐标</param>
+        /// <returns>世界坐标</returns>
+        [Since("v3.7.0")]
+        public Vector2 LocalPointToWorldPoint(Vector2 localPoint)
+        {
+            return rectTransform.TransformPoint(localPoint);
+        }
+
+        /// <summary>
+        /// 保存图表为图片。
+        /// </summary>
+        /// <param name="imageType">type of image: png, jpg, exr</param>
+        /// <param name="savePath">save path</param>
+        public void SaveAsImage(string imageType = "png", string savePath = "")
+        {
+            StartCoroutine(SaveAsImageSync(imageType, savePath));
+        }
+
+        private IEnumerator SaveAsImageSync(string imageType, string path)
+        {
+            yield return new WaitForEndOfFrame();
+            ChartHelper.SaveAsImage(rectTransform, canvas, imageType, path);
         }
     }
 }

@@ -1,7 +1,7 @@
-
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using XUGL;
 
@@ -23,11 +23,11 @@ namespace XCharts.Runtime
         }
 
         public override void UpdateTooltipSerieParams(int dataIndex, bool showCategory, string category,
-            string marker, string itemFormatter, string numericFormatter,
+            string marker, string itemFormatter, string numericFormatter, string ignoreDataDefaultContent,
             ref List<SerieParams> paramList, ref string title)
         {
             UpdateCoordSerieParams(ref paramList, ref title, dataIndex, showCategory, category,
-                marker, itemFormatter, numericFormatter);
+                marker, itemFormatter, numericFormatter, ignoreDataDefaultContent);
         }
 
         public override void DrawSerie(VertexHelper vh)
@@ -36,6 +36,7 @@ namespace XCharts.Runtime
             {
                 DrawPolarLine(vh, serie);
                 DrawPolarLineSymbol(vh);
+                DrawPolarLineArrow(vh, serie);
             }
             else if (serie.IsUseCoord<GridCoord>())
             {
@@ -49,7 +50,7 @@ namespace XCharts.Runtime
             }
         }
 
-        public override void DrawTop(VertexHelper vh)
+        public override void DrawUpper(VertexHelper vh)
         {
             if (serie.IsUseCoord<GridCoord>())
             {
@@ -95,6 +96,28 @@ namespace XCharts.Runtime
                     lastY = label.transform.localPosition.y;
                 }
             }
+        }
+
+        public override int GetPointerItemDataIndex()
+        {
+            var symbolSize = SerieHelper.GetSysmbolSize(serie, null, chart.theme, chart.theme.serie.lineSymbolSize) * 1.5f;
+            var count = serie.context.dataPoints.Count;
+            for (int i = 0; i < count; i++)
+            {
+                var index = serie.context.dataIndexs[i];
+                var serieData = serie.GetSerieData(index);
+                if (serieData == null)
+                    continue;
+                if (serieData.context.isClip)
+                    continue;
+
+                var pos = serie.context.dataPoints[i];
+                if (Vector2.Distance(pos, chart.pointerPos) < symbolSize)
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
     }
 }

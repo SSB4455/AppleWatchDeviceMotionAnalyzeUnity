@@ -1,4 +1,3 @@
-﻿
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -7,11 +6,12 @@ namespace XCharts.Runtime
     [ExecuteInEditMode]
     [RequireComponent(typeof(RectTransform))]
     [DisallowMultipleComponent]
+    [HelpURL("https://xcharts-team.github.io/docs/configuration")]
     public class PieChart : BaseChart
     {
         protected override void DefaultChart()
         {
-            var legend = GetOrAddChartComponent<Legend>();
+            var legend = EnsureChartComponent<Legend>();
             legend.show = true;
 
             RemoveData();

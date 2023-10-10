@@ -1,4 +1,3 @@
-﻿
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -7,6 +6,7 @@ namespace XCharts.Runtime
     [ExecuteInEditMode]
     [RequireComponent(typeof(RectTransform))]
     [DisallowMultipleComponent]
+    [HelpURL("https://xcharts-team.github.io/docs/configuration")]
     public class RadarChart : BaseChart
     {
         protected override void DefaultChart()

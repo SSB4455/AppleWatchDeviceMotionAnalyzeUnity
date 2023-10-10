@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -74,6 +73,14 @@ namespace XCharts.Editor
             return prop.propertyPath + "_" + index;
         }
 
+        protected void AddHelpBox(string message, MessageType type = MessageType.Warning, int line = 2)
+        {
+            var offset = EditorGUI.indentLevel * ChartEditorHelper.INDENT_WIDTH;
+            EditorGUI.HelpBox(new Rect(m_DrawRect.x + offset, m_DrawRect.y, m_DrawRect.width - offset, EditorGUIUtility.singleLineHeight * line), message, type);
+            for (int i = 0; i < line; i++)
+                AddSingleLineHeight();
+        }
+
         protected void AddSingleLineHeight()
         {
             m_Heights[m_KeyName] += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
@@ -110,7 +117,7 @@ namespace XCharts.Editor
         {
             if (IngorePropertys.Contains(relativePropName)) return;
             if (!ChartEditorHelper.PropertyFieldWithMinValue(ref m_DrawRect, m_Heights, m_KeyName, prop,
-                relativePropName, minValue))
+                    relativePropName, minValue))
             {
                 Debug.LogError("PropertyField ERROR:" + prop.displayName + ", " + relativePropName);
             }
@@ -119,7 +126,7 @@ namespace XCharts.Editor
         {
             if (IngorePropertys.Contains(relativePropName)) return;
             if (!ChartEditorHelper.PropertyFieldWithMaxValue(ref m_DrawRect, m_Heights, m_KeyName, prop,
-                relativePropName, maxValue))
+                    relativePropName, maxValue))
             {
                 Debug.LogError("PropertyField ERROR:" + prop.displayName + ", " + relativePropName);
             }
@@ -163,24 +170,39 @@ namespace XCharts.Editor
             }
         }
         protected bool MakeComponentFoldout(SerializedProperty prop, string relativePropName, bool relativePropEnable,
-             params HeaderMenuInfo[] menus)
+            params HeaderMenuInfo[] menus)
         {
             if (string.IsNullOrEmpty(relativePropName))
             {
                 return ChartEditorHelper.MakeComponentFoldout(ref m_DrawRect, m_Heights, m_PropToggles, m_KeyName,
-                    m_DisplayName, null, relativePropEnable, menus);
+                    m_DisplayName, null, null, relativePropEnable, menus);
             }
             else
-            {   
+            {
                 var relativeProp = prop.FindPropertyRelative(relativePropName);
                 return ChartEditorHelper.MakeComponentFoldout(ref m_DrawRect, m_Heights, m_PropToggles, m_KeyName,
-                    m_DisplayName, relativeProp, relativePropEnable, menus);
+                    m_DisplayName, relativeProp, null, relativePropEnable, menus);
             }
         }
 
-        protected virtual void DrawExtendeds(SerializedProperty prop)
+        protected bool MakeComponentFoldout(SerializedProperty prop, string relativePropName, string relativePropName2,
+            bool relativePropEnable, params HeaderMenuInfo[] menus)
         {
+            if (string.IsNullOrEmpty(relativePropName))
+            {
+                return ChartEditorHelper.MakeComponentFoldout(ref m_DrawRect, m_Heights, m_PropToggles, m_KeyName,
+                    m_DisplayName, null, null, relativePropEnable, menus);
+            }
+            else
+            {
+                var relativeProp = prop.FindPropertyRelative(relativePropName);
+                var relativeProp2 = prop.FindPropertyRelative(relativePropName2);
+                return ChartEditorHelper.MakeComponentFoldout(ref m_DrawRect, m_Heights, m_PropToggles, m_KeyName,
+                    m_DisplayName, relativeProp, relativeProp2, relativePropEnable, menus);
+            }
         }
+
+        protected virtual void DrawExtendeds(SerializedProperty prop) { }
 
         public override float GetPropertyHeight(SerializedProperty prop, GUIContent label)
         {

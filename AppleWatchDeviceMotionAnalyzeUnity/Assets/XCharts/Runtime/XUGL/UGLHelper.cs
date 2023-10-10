@@ -7,18 +7,18 @@ namespace XUGL
     {
         public static bool IsValueEqualsColor(Color32 color1, Color32 color2)
         {
-            return color1.a == color2.a
-                && color1.b == color2.b
-                && color1.g == color2.g
-                && color1.r == color2.r;
+            return color1.a == color2.a &&
+                color1.b == color2.b &&
+                color1.g == color2.g &&
+                color1.r == color2.r;
         }
 
         public static bool IsValueEqualsColor(Color color1, Color color2)
         {
-            return color1.a == color2.a
-                && color1.b == color2.b
-                && color1.g == color2.g
-                && color1.r == color2.r;
+            return color1.a == color2.a &&
+                color1.b == color2.b &&
+                color1.g == color2.g &&
+                color1.r == color2.r;
         }
 
         public static bool IsValueEqualsString(string str1, string str2)
@@ -32,21 +32,21 @@ namespace XUGL
 
         public static bool IsValueEqualsVector2(Vector2 v1, Vector2 v2)
         {
-            return v1.x == v2.x
-                && v1.y == v2.y;
+            return v1.x == v2.x &&
+                v1.y == v2.y;
         }
 
         public static bool IsValueEqualsVector3(Vector3 v1, Vector3 v2)
         {
-            return v1.x == v2.x
-                && v1.y == v2.y
-                && v1.z == v2.z;
+            return v1.x == v2.x &&
+                v1.y == v2.y &&
+                v1.z == v2.z;
         }
 
         public static bool IsValueEqualsVector3(Vector3 v1, Vector2 v2)
         {
-            return v1.x == v2.x
-                && v1.y == v2.y;
+            return v1.x == v2.x &&
+                v1.y == v2.y;
         }
 
         public static bool IsValueEqualsList<T>(List<T> list1, List<T> list2)
@@ -59,9 +59,7 @@ namespace XUGL
 
             for (int i = 0; i < list1.Count; i++)
             {
-                if (list1[i] == null && list2[i] == null)
-                {
-                }
+                if (list1[i] == null && list2[i] == null) { }
                 else
                 {
                     if (list1[i] != null)
@@ -81,25 +79,25 @@ namespace XUGL
 
         public static bool IsClearColor(Color32 color)
         {
-            return color.a == 0
-                && color.b == 0
-                && color.g == 0
-                && color.r == 0;
+            return color.a == 0 &&
+                color.b == 0 &&
+                color.g == 0 &&
+                color.r == 0;
         }
 
         public static bool IsClearColor(Color color)
         {
-            return color.a == 0
-                && color.b == 0
-                && color.g == 0
-                && color.r == 0;
+            return color.a == 0 &&
+                color.b == 0 &&
+                color.g == 0 &&
+                color.r == 0;
         }
 
         public static bool IsZeroVector(Vector3 pos)
         {
-            return pos.x == 0
-                && pos.y == 0
-                && pos.z == 0;
+            return pos.x == 0 &&
+                pos.y == 0 &&
+                pos.z == 0;
         }
 
         public static Vector3 RotateRound(Vector3 position, Vector3 center, Vector3 axis, float angle)
@@ -110,25 +108,31 @@ namespace XUGL
         }
 
         public static void GetBezierList(ref List<Vector3> posList, Vector3 sp, Vector3 ep,
-           Vector3 lsp, Vector3 nep, float smoothness = 2f, float k = 2.0f)
+            Vector3 lsp, Vector3 nep, float smoothness = 2f, float k = 2.0f, bool limit = false, bool randomDire = false)
         {
-            float dist = Mathf.Abs(sp.x - ep.x);
             Vector3 cp1, cp2;
+            var dist = Vector3.Distance(sp, ep);
             var dir = (ep - sp).normalized;
-            var diff = dist / k;
+            var diff = (randomDire ? dist : Mathf.Abs(sp.x - ep.x)) / k;
             if (lsp == sp)
             {
-                cp1 = sp + dist / k * dir * 1;
-                cp1.y = sp.y;
-                cp1 = sp;
+                cp1 = sp + (nep - ep).normalized * diff;
+                if (limit) cp1.y = sp.y;
             }
             else
             {
                 cp1 = sp + (ep - lsp).normalized * diff;
+                if (limit) cp1.y = sp.y;
             }
-            if (nep == ep) cp2 = ep;
-            else cp2 = ep - (nep - sp).normalized * diff;
-            dist = Vector3.Distance(sp, ep);
+            if (nep == ep)
+            {
+                cp2 = ep;
+            }
+            else
+            {
+                cp2 = ep - (nep - sp).normalized * diff;
+                if (limit) cp2.y = ep.y;
+            }
             int segment = (int)(dist / (smoothness <= 0 ? 2f : smoothness));
             if (segment < 1) segment = (int)(dist / 0.5f);
             if (segment < 4) segment = 4;
@@ -251,12 +255,10 @@ namespace XUGL
         /// <param name="p2">线段1终点</param>
         /// <param name="p3">线段2起点</param>
         /// <param name="p4">线段2终点</param>
-        /// <param name="intersection">相交点。当不想交时默认为 Vector3.zero </param>
+        /// <param name="intersection">相交点。当不相交时为初始值</param>
         /// <returns>相交则返回 true, 否则返回 false</returns>
         public static bool GetIntersection(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, ref Vector3 intersection)
         {
-            intersection = Vector3.zero;
-
             var d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
             if (d == 0)
                 return false;
@@ -268,6 +270,30 @@ namespace XUGL
 
             intersection.x = p1.x + u * (p2.x - p1.x);
             intersection.y = p1.y + u * (p2.y - p1.y);
+            return true;
+        }
+
+        /// <summary>
+        /// 获得两直线的交点
+        /// </summary>
+        /// <param name="p1">线段1起点</param>
+        /// <param name="p2">线段1终点</param>
+        /// <param name="p3">线段2起点</param>
+        /// <param name="p4">线段2终点</param>
+        /// <param name="intersection">相交点。当不相交时为初始值</param>
+        /// <returns>相交则返回 true, 否则返回 false</returns>
+        public static bool GetIntersection(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, ref List<Vector3> intersection)
+        {
+            var d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+            if (d == 0)
+                return false;
+
+            var u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
+            var v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
+            if (u < 0 || u > 1 || v < 0 || v > 1)
+                return false;
+
+            intersection.Add(new Vector3(p1.x + u * (p2.x - p1.x), p1.y + u * (p2.y - p1.y)));
             return true;
         }
 
@@ -313,8 +339,8 @@ namespace XUGL
 
             if (Vector3.Cross(dir1, dir2) == Vector3.zero && np != cp)
             {
-                itp = ntp;
-                ibp = nbp;
+                itp = clp;
+                ibp = crp;
                 return;
             }
 

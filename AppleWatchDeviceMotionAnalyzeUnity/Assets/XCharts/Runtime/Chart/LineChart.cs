@@ -1,5 +1,3 @@
-﻿
-
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -8,6 +6,7 @@ namespace XCharts.Runtime
     [ExecuteInEditMode]
     [RequireComponent(typeof(RectTransform))]
     [DisallowMultipleComponent]
+    [HelpURL("https://xcharts-team.github.io/docs/configuration")]
     public class LineChart : BaseChart
     {
         protected override void DefaultChart()
@@ -16,7 +15,7 @@ namespace XCharts.Runtime
             AddChartComponentWhenNoExist<XAxis>();
             AddChartComponentWhenNoExist<YAxis>();
 
-            var tooltip = GetOrAddChartComponent<Tooltip>();
+            var tooltip = EnsureChartComponent<Tooltip>();
             tooltip.type = Tooltip.Type.Line;
             tooltip.trigger = Tooltip.Trigger.Axis;
 

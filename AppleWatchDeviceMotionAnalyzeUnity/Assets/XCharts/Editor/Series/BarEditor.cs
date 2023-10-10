@@ -7,6 +7,7 @@ namespace XCharts.Editor
     {
         public override void OnCustomInspectorGUI()
         {
+            PropertyField("m_ColorBy");
             PropertyField("m_Stack");
             if (serie.IsUseCoord<PolarCoord>())
             {
@@ -18,13 +19,21 @@ namespace XCharts.Editor
                 PropertyField("m_YAxisIndex");
             }
             PropertyField("m_BarType");
-            PropertyField("m_BarPercentStack");
             PropertyField("m_BarWidth");
             PropertyField("m_BarGap");
-            if (serie.barType == BarType.Zebra)
+            PropertyField("m_BarMaxWidth");
+            if (serie.IsUseCoord<PolarCoord>())
             {
-                PropertyField("m_BarZebraWidth");
-                PropertyField("m_BarZebraGap");
+                PropertyField("m_RoundCap");
+            }
+            else
+            {
+                PropertyField("m_BarPercentStack");
+                if (serie.barType == BarType.Zebra)
+                {
+                    PropertyField("m_BarZebraWidth");
+                    PropertyField("m_BarZebraGap");
+                }
             }
             PropertyField("m_Clip");
             PropertyFiledMore(() =>

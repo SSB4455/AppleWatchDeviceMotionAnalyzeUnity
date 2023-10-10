@@ -1,8 +1,7 @@
-﻿
-using UnityEngine;
-using UnityEditor;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
 using XCharts.Runtime;
 
 namespace XCharts.Editor
@@ -166,7 +165,7 @@ namespace XCharts.Editor
         }
         public static bool MakeComponentFoldout(ref Rect drawRect, Dictionary<string, float> heights,
             Dictionary<string, bool> moduleToggle, string key, string content, SerializedProperty prop,
-            bool propEnable, params HeaderMenuInfo[] menus)
+            SerializedProperty prop2, bool propEnable, params HeaderMenuInfo[] menus)
         {
             var sourRect = drawRect;
             float defaultWidth = drawRect.width;
@@ -185,6 +184,12 @@ namespace XCharts.Editor
                             MakeBool(drawRect, prop);
                     else
                         MakeBool(drawRect, prop);
+                    if (prop2 != null && !moduleToggle[key])
+                    {
+                        drawRect.x = EditorGUIUtility.labelWidth - EditorGUI.indentLevel * INDENT_WIDTH + ARROW_WIDTH + BOOL_WIDTH;
+                        drawRect.width = defaultWidth - drawRect.x + ARROW_WIDTH;
+                        EditorGUI.PropertyField(drawRect, prop2, GUIContent.none);
+                    }
                 }
                 else
                 {
@@ -200,8 +205,6 @@ namespace XCharts.Editor
             heights[key] += headerHeight;
             return moduleToggle[key];
         }
-
-
 
         public static void MakeBool(Rect drawRect, SerializedProperty boolProp, int index = 0, string name = null)
         {
@@ -315,8 +318,8 @@ namespace XCharts.Editor
         {
             EditorGUI.indentLevel++;
             var listSize = listProp.arraySize;
-            var iconWidth = 14;
-            var iconGap = 3f;
+            var iconWidth = 10;
+            var iconGap = 0f;
 
             if (showSize)
             {
@@ -378,21 +381,26 @@ namespace XCharts.Editor
                     {
                         var temp = INDENT_WIDTH + GAP_WIDTH + iconGap;
                         var isSerie = "Serie".Equals(element.type);
-                        var elementRect = isSerie
-                            ? new Rect(drawRect.x, drawRect.y, drawRect.width + INDENT_WIDTH - 2 * iconGap, drawRect.height)
-                            : new Rect(drawRect.x, drawRect.y, drawRect.width - 3 * iconWidth, drawRect.height);
+                        var elementRect = isSerie ?
+                            new Rect(drawRect.x, drawRect.y, drawRect.width + INDENT_WIDTH - 2 * iconGap, drawRect.height) :
+                            new Rect(drawRect.x, drawRect.y, drawRect.width - 4 * iconWidth, drawRect.height);
                         EditorGUI.PropertyField(elementRect, element, new GUIContent("Element " + i));
-                        var iconRect = new Rect(drawRect.width - 3 * iconWidth + temp, drawRect.y, iconWidth, drawRect.height);
+                        var iconRect = new Rect(drawRect.width - 4 * iconWidth + temp, drawRect.y, iconWidth, drawRect.height);
                         var oldColor = GUI.contentColor;
                         GUI.contentColor = Color.black;
                         if (GUI.Button(iconRect, EditorCustomStyles.iconUp, EditorCustomStyles.invisibleButton))
                         {
                             if (i > 0) listProp.MoveArrayElement(i, i - 1);
                         }
-                        iconRect = new Rect(drawRect.width - 2 * iconWidth + temp, drawRect.y, iconWidth, drawRect.height);
+                        iconRect = new Rect(drawRect.width - 3 * iconWidth + temp, drawRect.y, iconWidth, drawRect.height);
                         if (GUI.Button(iconRect, EditorCustomStyles.iconDown, EditorCustomStyles.invisibleButton))
                         {
                             if (i < listProp.arraySize - 1) listProp.MoveArrayElement(i, i + 1);
+                        }
+                        iconRect = new Rect(drawRect.width - 2 * iconWidth + temp, drawRect.y, iconWidth, drawRect.height);
+                        if (GUI.Button(iconRect, EditorCustomStyles.iconAdd, EditorCustomStyles.invisibleButton))
+                        {
+                            if (i < listProp.arraySize && i >= 0) listProp.InsertArrayElementAtIndex(i);
                         }
                         iconRect = new Rect(drawRect.width - iconWidth + temp, drawRect.y, iconWidth, drawRect.height);
                         if (GUI.Button(iconRect, EditorCustomStyles.iconRemove, EditorCustomStyles.invisibleButton))
@@ -536,11 +544,11 @@ namespace XCharts.Editor
             return HEADER_HEIGHT;
         }
 
-        internal static bool DrawHeader(string title, bool state, bool drawBackground, SerializedProperty activeField,
+        public static bool DrawHeader(string title, bool state, bool drawBackground, SerializedProperty activeField,
             Action<Rect> drawCallback, params HeaderMenuInfo[] menus)
         {
             var rect = GUILayoutUtility.GetRect(1f, HEADER_HEIGHT);
-            var labelRect = DrawHeaderInternal(rect, title, state, drawBackground, activeField);
+            var labelRect = DrawHeaderInternal(rect, title, ref state, drawBackground, activeField);
             DrawMenu(rect, menus);
             if (drawCallback != null)
             {
@@ -565,7 +573,7 @@ namespace XCharts.Editor
             Action<Rect> drawCallback, List<HeaderMenuInfo> menus)
         {
             var rect = GUILayoutUtility.GetRect(1f, HEADER_HEIGHT);
-            var labelRect = DrawHeaderInternal(rect, title, state, drawBackground, activeField);
+            var labelRect = DrawHeaderInternal(rect, title, ref state, drawBackground, activeField);
             DrawMenu(rect, menus);
             if (drawCallback != null)
             {
@@ -586,7 +594,7 @@ namespace XCharts.Editor
             return state;
         }
 
-        private static Rect DrawHeaderInternal(Rect rect, string title, bool state, bool drawBackground, SerializedProperty activeField)
+        private static Rect DrawHeaderInternal(Rect rect, string title, ref bool state, bool drawBackground, SerializedProperty activeField)
         {
             var splitRect = rect;
             splitRect.x = EditorGUI.indentLevel * INDENT_WIDTH + 4;
@@ -627,11 +635,13 @@ namespace XCharts.Editor
         }
 
         internal static bool DrawHeader(string title, SerializedProperty group, SerializedProperty activeField,
-            Action resetAction, Action removeAction)
+            Action resetAction, Action removeAction, Action docAction)
         {
             if (group == null) return false;
             group.isExpanded = DrawHeader(title, group.isExpanded, false, activeField, null,
-                new HeaderMenuInfo("Reset", resetAction), new HeaderMenuInfo("Remove", removeAction));
+                new HeaderMenuInfo("Reset", resetAction),
+                new HeaderMenuInfo("Remove", removeAction),
+                new HeaderMenuInfo("HelpDoc", docAction));
             return group.isExpanded;
         }
 

@@ -1,11 +1,10 @@
-﻿
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace XCharts.Runtime
 {
     [System.Serializable]
-    public class ImageStyle : ChildComponent, ISerieExtraComponent, ISerieDataComponent
+    public class ImageStyle : ChildComponent, ISerieComponent, ISerieDataComponent
     {
         [SerializeField] private bool m_Show = true;
         [SerializeField] private Sprite m_Sprite;

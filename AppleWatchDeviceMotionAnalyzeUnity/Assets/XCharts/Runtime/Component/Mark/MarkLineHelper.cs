@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -9,18 +8,19 @@ namespace XCharts.Runtime
         {
             var serieLabel = data.label;
             var numericFormatter = serieLabel.numericFormatter;
-            if (serieLabel.formatterFunction != null)
-            {
-                return serieLabel.formatterFunction(data.index, data.runtimeValue, null);
-            }
             if (string.IsNullOrEmpty(serieLabel.formatter))
-                return ChartCached.NumberToStr(data.runtimeValue, numericFormatter);
+            {
+                var content = ChartCached.NumberToStr(data.runtimeValue, numericFormatter);
+                return serieLabel.formatterFunction == null? content:
+                    serieLabel.formatterFunction(data.index, data.runtimeValue, null, content);
+            }
             else
             {
                 var content = serieLabel.formatter;
-                FormatterHelper.ReplaceSerieLabelContent(ref content, numericFormatter, data.runtimeValue,
-                    0, serie.serieName, data.name, data.name, Color.clear);
-                return content;
+                FormatterHelper.ReplaceSerieLabelContent(ref content, numericFormatter, serie.dataCount, data.runtimeValue,
+                    0, serie.serieName, data.name, data.name, Color.clear, null);
+                return serieLabel.formatterFunction == null? content:
+                    serieLabel.formatterFunction(data.index, data.runtimeValue, null, content);
             }
         }
 
@@ -34,13 +34,16 @@ namespace XCharts.Runtime
             switch (data.label.position)
             {
                 case LabelStyle.Position.Start:
+                    if (data.runtimeStartPosition == Vector3.zero) return Vector3.zero;
                     if (horizontal) return data.runtimeStartPosition + data.label.offset + labelWidth / 2 * Vector3.left;
                     else return data.runtimeStartPosition + data.label.offset + labelHeight / 2 * Vector3.down;
                 case LabelStyle.Position.Middle:
+                    if (data.runtimeCurrentEndPosition == Vector3.zero) return Vector3.zero;
                     var center = (data.runtimeStartPosition + data.runtimeCurrentEndPosition) / 2;
                     if (horizontal) return center + data.label.offset + labelHeight / 2 * Vector3.up;
                     else return center + data.label.offset + labelWidth / 2 * Vector3.right;
                 default:
+                    if (data.runtimeCurrentEndPosition == Vector3.zero) return Vector3.zero;
                     if (horizontal) return data.runtimeCurrentEndPosition + data.label.offset + labelWidth / 2 * Vector3.right;
                     else return data.runtimeCurrentEndPosition + data.label.offset + labelHeight / 2 * Vector3.up;
             }

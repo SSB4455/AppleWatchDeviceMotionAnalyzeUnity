@@ -1,8 +1,7 @@
-
-using System.Collections.Generic;
-using UnityEngine;
 using System;
+using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 #if dUI_TextMeshPro
 using TMPro;
 #endif
@@ -59,17 +58,23 @@ namespace XCharts.Runtime
         {
             get { return sharedTheme.themeType; }
         }
+        /// <summary>
+        /// theme name.
+        /// |主题名字。
+        /// </summary>
         public string themeName
         {
             get { return sharedTheme.themeName; }
         }
-
+        /// <summary>
+        /// the asset of theme.
+        /// |主题配置。
+        /// </summary>
         public Theme sharedTheme
         {
             get { return m_SharedTheme; }
             set { m_SharedTheme = value; SetAllDirty(); }
         }
-
         /// <summary>
         /// the contrast color of chart.
         /// |对比色。
@@ -92,7 +97,7 @@ namespace XCharts.Runtime
         }
         /// <summary>
         /// Whether the background color is transparent. When true, the background color is not drawn.
-        /// ｜是否透明背景颜色。当设置为true时，不绘制背景颜色。
+        /// |是否透明背景颜色。当设置为true时，不绘制背景颜色。
         /// </summary>
         public bool transparentBackground
         {
@@ -157,7 +162,7 @@ namespace XCharts.Runtime
 
         public Color32 GetBackgroundColor(Background background)
         {
-            if (background != null && background.show && background.hideThemeBackgroundColor)
+            if (background != null && background.show && !background.autoColor)
                 return background.imageColor;
             else
                 return backgroundColor;
@@ -230,9 +235,8 @@ namespace XCharts.Runtime
         {
             Color color;
             ColorUtility.TryParseHtmlString(hexColorStr, out color);
-            return (Color32)color;
+            return (Color32) color;
         }
-
 
     }
 }

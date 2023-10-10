@@ -1,4 +1,3 @@
-
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -144,88 +143,41 @@ namespace XCharts.Runtime
             m_TextLimit.SetRelatedText(txt, labelWidth);
         }
 
-        public string GetFormatterContent(int labelIndex, string category)
+        public override string GetFormatterContent(int labelIndex, string category)
         {
-            if (m_FormatterFunction != null)
-            {
-                return m_FormatterFunction(labelIndex, 0, category);
-            }
-            if (string.IsNullOrEmpty(category)) 
-                return category;
-            
+            if (string.IsNullOrEmpty(category))
+                return GetFormatterFunctionContent(labelIndex, category, category);
+
             if (string.IsNullOrEmpty(m_Formatter))
             {
-                return m_TextLimit.GetLimitContent(category);
+                return GetFormatterFunctionContent(labelIndex, category, m_TextLimit.GetLimitContent(category));
             }
             else
             {
                 var content = m_Formatter;
                 FormatterHelper.ReplaceAxisLabelContent(ref content, category);
-                return m_TextLimit.GetLimitContent(content);
+                return GetFormatterFunctionContent(labelIndex, category, m_TextLimit.GetLimitContent(content));
             }
         }
 
-        public string GetFormatterContent(int labelIndex, double value, double minValue, double maxValue, bool isLog = false)
+        public override string GetFormatterContent(int labelIndex, double value, double minValue, double maxValue, bool isLog = false)
         {
             if (showAsPositiveNumber && value < 0)
             {
                 value = Math.Abs(value);
             }
-            if (m_FormatterFunction != null)
-            {
-                return m_FormatterFunction(labelIndex, value, null);
-            }
-            if (string.IsNullOrEmpty(m_Formatter))
-            {
-                if (isLog)
-                {
-                    return ChartCached.NumberToStr(value, numericFormatter);
-                }
-                if (minValue >= -1 && minValue <= 1 && maxValue >= -1 && maxValue <= 1)
-                {
-                    int minAcc = ChartHelper.GetFloatAccuracy(minValue);
-                    int maxAcc = ChartHelper.GetFloatAccuracy(maxValue);
-                    int curAcc = ChartHelper.GetFloatAccuracy(value);
-                    int acc = Mathf.Max(Mathf.Max(minAcc, maxAcc), curAcc);
-                    return ChartCached.FloatToStr(value, numericFormatter, acc);
-                }
-                return ChartCached.NumberToStr(value, numericFormatter);
-            }
-            else
-            {
-                var content = m_Formatter;
-                FormatterHelper.ReplaceAxisLabelContent(ref content, numericFormatter, value);
-                return content;
-            }
+            return base.GetFormatterContent(labelIndex, value, minValue, maxValue, isLog);
         }
 
-        public string GetFormatterDateTime(int labelIndex, double value, double minValue, double maxValue)
+        public bool IsNeedShowLabel(int index, int total)
         {
-            if (m_FormatterFunction != null)
+            var labelShow = show && (interval == 0 || index % (interval + 1) == 0);
+            if (labelShow)
             {
-                return m_FormatterFunction(labelIndex, value, null);
+                if (!showStartLabel && index == 0) labelShow = false;
+                else if (!showEndLabel && index == total - 1) labelShow = false;
             }
-            var timestamp = (int)value;
-            var dateTime = DateTimeUtil.GetDateTime(timestamp);
-            var dateString = string.Empty;
-            if (string.IsNullOrEmpty(numericFormatter))
-            {
-                dateString = DateTimeUtil.GetDateTimeFormatString(dateTime, maxValue - minValue);
-            }
-            else
-            {
-                dateString = dateTime.ToString(numericFormatter);
-            }
-            if (!string.IsNullOrEmpty(m_Formatter))
-            {
-                var content = m_Formatter;
-                FormatterHelper.ReplaceAxisLabelContent(ref content, dateString);
-                return m_TextLimit.GetLimitContent(content);
-            }
-            else
-            {
-                return m_TextLimit.GetLimitContent(dateString);
-            }
+            return labelShow;
         }
     }
 }

@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -20,15 +19,16 @@ namespace XCharts.Editor
                 PropertyField(prop, "m_Type");
                 if (type == SymbolType.Custom)
                 {
+                    AddHelpBox("Custom Symbol only work in PictorialBar serie", MessageType.Warning);
                     PropertyField(prop, "m_Image");
                     PropertyField(prop, "m_ImageType");
                     PropertyField(prop, "m_Width");
                     PropertyField(prop, "m_Height");
-                    // PropertyField(prop, "m_Offset");
                 }
                 PropertyField(prop, "m_Color");
                 PropertyField(prop, "m_Size");
                 PropertyField(prop, "m_Gap");
+                PropertyField(prop, "m_Offset");
                 --EditorGUI.indentLevel;
             }
         }

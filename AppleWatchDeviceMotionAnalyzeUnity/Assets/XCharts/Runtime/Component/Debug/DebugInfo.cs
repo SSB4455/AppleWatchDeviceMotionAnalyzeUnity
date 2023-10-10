@@ -1,8 +1,7 @@
-
-using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 
 namespace XCharts.Runtime
 {
@@ -20,12 +19,12 @@ namespace XCharts.Runtime
         {
             background = new ImageStyle()
             {
-                color = new Color32(32, 32, 32, 170)
+            color = new Color32(32, 32, 32, 170)
             },
             textStyle = new TextStyle()
             {
-                fontSize = 18,
-                color = Color.white
+            fontSize = 18,
+            color = Color.white
             }
         };
 
@@ -41,10 +40,35 @@ namespace XCharts.Runtime
         private ChartLabel m_Label;
         private List<float> m_FpsList = new List<float>();
 
+        /// <summary>
+        /// Whether show debug component.
+        /// |是否显示Debug组件。
+        /// </summary>
+        public bool show { get { return m_Show; } set { m_Show = value; } }
+        /// <summary>
+        /// Whether show children components of chart in hierarchy view.
+        /// |是否在Hierarchy试图显示所有chart下的节点。
+        /// </summary>
         public bool showAllChartObject { get { return m_ShowAllChartObject; } set { m_ShowAllChartObject = value; } }
+        /// <summary>
+        /// Whether to fold series in inspector view.
+        /// |是否在Inspector上折叠Serie。
+        /// </summary>
         public bool foldSeries { get { return m_FoldSeries; } set { m_FoldSeries = value; } }
+        /// <summary>
+        /// frame rate.
+        /// |当前帧率。
+        /// </summary>
         public float fps { get; private set; }
+        /// <summary>
+        /// The average frame rate.
+        /// |平均帧率。
+        /// </summary>
         public float avgFps { get; private set; }
+        /// <summary>
+        /// The fefresh count of chart per second.
+        /// |图表每秒刷新次数。
+        /// </summary>
         public int refreshCount { get; internal set; }
         internal int clickChartCount { get; set; }
 
@@ -56,7 +80,7 @@ namespace XCharts.Runtime
 
         public void Update()
         {
-            if (clickChartCount >= 2)
+            if (clickChartCount > 2)
             {
                 m_ShowDebugInfo = !m_ShowDebugInfo;
                 ChartHelper.SetActive(m_Label.transform, m_ShowDebugInfo);
@@ -144,7 +168,7 @@ namespace XCharts.Runtime
             ChartHelper.SetActive(labelGameObject, m_ShowDebugInfo);
 
             var label = ChartHelper.AddChartLabel("info", labelGameObject.transform, labelStyle, theme.common,
-                    "", Color.clear, TextAnchor.UpperLeft);
+                "", Color.clear, TextAnchor.UpperLeft);
             label.SetActive(labelStyle.show);
             return label;
         }

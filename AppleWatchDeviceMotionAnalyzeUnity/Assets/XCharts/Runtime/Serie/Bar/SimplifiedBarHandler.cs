@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -15,15 +14,14 @@ namespace XCharts.Runtime
         public override void Update()
         {
             base.Update();
-            UpdateSerieContext();
         }
 
         public override void UpdateTooltipSerieParams(int dataIndex, bool showCategory, string category,
-            string marker, string itemFormatter, string numericFormatter,
+            string marker, string itemFormatter, string numericFormatter, string ignoreDataDefaultContent,
             ref List<SerieParams> paramList, ref string title)
         {
             UpdateCoordSerieParams(ref paramList, ref title, dataIndex, showCategory, category,
-                marker, itemFormatter, numericFormatter);
+                marker, itemFormatter, numericFormatter, ignoreDataDefaultContent);
         }
 
         public override void DrawSerie(VertexHelper vh)
@@ -31,13 +29,14 @@ namespace XCharts.Runtime
             DrawBarSerie(vh, serie, serie.context.colorIndex);
         }
 
-        private void UpdateSerieContext()
+        public override void UpdateSerieContext()
         {
             if (m_SerieGrid == null)
                 return;
 
             var needCheck = (chart.isPointerInChart && m_SerieGrid.IsPointerEnter()) || m_LegendEnter;
             var needInteract = false;
+            Color32 color, toColor;
             if (!needCheck)
             {
                 if (m_LastCheckContextFlag != needCheck)
@@ -47,9 +46,8 @@ namespace XCharts.Runtime
                     serie.context.pointerEnter = false;
                     foreach (var serieData in serie.data)
                     {
-                        var barColor = SerieHelper.GetItemColor(serie, serieData, chart.theme, serie.context.colorIndex, false);
-                        var barToColor = SerieHelper.GetItemToColor(serie, serieData, chart.theme, serie.context.colorIndex, false);
-                        serieData.interact.SetColor(ref needInteract, barColor, barToColor);
+                        SerieHelper.GetItemColor(out color, out toColor, serie, serieData, chart.theme, SerieState.Normal);
+                        serieData.interact.SetColor(ref needInteract, color, toColor);
                     }
                     if (needInteract)
                     {
@@ -64,9 +62,8 @@ namespace XCharts.Runtime
                 serie.context.pointerEnter = true;
                 foreach (var serieData in serie.data)
                 {
-                    var barColor = SerieHelper.GetItemColor(serie, serieData, chart.theme, serie.context.colorIndex, true);
-                    var barToColor = SerieHelper.GetItemToColor(serie, serieData, chart.theme, serie.context.colorIndex, true);
-                    serieData.interact.SetColor(ref needInteract, barColor, barToColor);
+                    SerieHelper.GetItemColor(out color, out toColor, serie, serieData, chart.theme, SerieState.Emphasis);
+                    serieData.interact.SetColor(ref needInteract, color, toColor);
                 }
             }
             else
@@ -81,16 +78,14 @@ namespace XCharts.Runtime
                         serie.context.pointerEnter = true;
                         serieData.context.highlight = true;
 
-                        var barColor = SerieHelper.GetItemColor(serie, serieData, chart.theme, serie.context.colorIndex, true);
-                        var barToColor = SerieHelper.GetItemToColor(serie, serieData, chart.theme, serie.context.colorIndex, true);
-                        serieData.interact.SetColor(ref needInteract, barColor, barToColor);
+                        SerieHelper.GetItemColor(out color, out toColor, serie, serieData, chart.theme, SerieState.Emphasis);
+                        serieData.interact.SetColor(ref needInteract, color, toColor);
                     }
                     else
                     {
                         serieData.context.highlight = false;
-                        var barColor = SerieHelper.GetItemColor(serie, serieData, chart.theme, serie.context.colorIndex, false);
-                        var barToColor = SerieHelper.GetItemToColor(serie, serieData, chart.theme, serie.context.colorIndex, false);
-                        serieData.interact.SetColor(ref needInteract, barColor, barToColor);
+                        SerieHelper.GetItemColor(out color, out toColor, serie, serieData, chart.theme, SerieState.Normal);
+                        serieData.interact.SetColor(ref needInteract, color, toColor);
                     }
                 }
             }
@@ -105,21 +100,9 @@ namespace XCharts.Runtime
             if (!serie.show || serie.animation.HasFadeOut())
                 return;
 
-            var isY = ComponentHelper.IsAnyCategoryOfYAxis(chart.components);
-
             Axis axis;
             Axis relativedAxis;
-
-            if (isY)
-            {
-                axis = chart.GetChartComponent<YAxis>(serie.yAxisIndex);
-                relativedAxis = chart.GetChartComponent<XAxis>(serie.xAxisIndex);
-            }
-            else
-            {
-                axis = chart.GetChartComponent<XAxis>(serie.xAxisIndex);
-                relativedAxis = chart.GetChartComponent<YAxis>(serie.yAxisIndex);
-            }
+            var isY = chart.GetSerieGridCoordAxis(serie, out axis, out relativedAxis);
             m_SerieGrid = chart.GetChartComponent<GridCoord>(axis.gridIndex);
 
             if (axis == null)
@@ -138,16 +121,17 @@ namespace XCharts.Runtime
             var axisLength = isY ? m_SerieGrid.context.height : m_SerieGrid.context.width;
             var axisXY = isY ? m_SerieGrid.context.y : m_SerieGrid.context.x;
 
+            var barCount = chart.GetSerieBarRealCount<SimplifiedBar>();
             float categoryWidth = AxisHelper.GetDataWidth(axis, axisLength, showData.Count, dataZoom);
-            float barGap = chart.GetSerieBarGap<Bar>();
-            float totalBarWidth = chart.GetSerieTotalWidth<Bar>(categoryWidth, barGap);
-            float barWidth = serie.GetBarWidth(categoryWidth);
+            float barGap = chart.GetSerieBarGap<SimplifiedBar>();
+            float totalBarWidth = chart.GetSerieTotalWidth<SimplifiedBar>(categoryWidth, barGap, barCount);
+            float barWidth = serie.GetBarWidth(categoryWidth, barCount);
             float offset = (categoryWidth - totalBarWidth) * 0.5f;
             float barGapWidth = barWidth + barWidth * barGap;
             float gap = serie.barGap == -1 ? offset : offset + serie.index * barGapWidth;
-            int maxCount = serie.maxShow > 0
-                ? (serie.maxShow > showData.Count ? showData.Count : serie.maxShow)
-                : showData.Count;
+            int maxCount = serie.maxShow > 0 ?
+                (serie.maxShow > showData.Count ? showData.Count : serie.maxShow) :
+                showData.Count;
 
             bool dataChanging = false;
             float dataChangeDuration = serie.animation.GetUpdateAnimationDuration();
@@ -167,6 +151,7 @@ namespace XCharts.Runtime
                 if (!serieData.show || serie.IsIgnoreValue(serieData))
                 {
                     serie.context.dataPoints.Add(Vector3.zero);
+                    serie.context.dataIndexs.Add(serieData.index);
                     continue;
                 }
 
@@ -174,15 +159,14 @@ namespace XCharts.Runtime
                     dataChanging = true;
 
                 var highlight = serieData.context.highlight || serie.highlight;
-                var itemStyle = SerieHelper.GetItemStyle(serie, serieData, highlight);
+                var itemStyle = SerieHelper.GetItemStyle(serie, serieData);
                 var value = axis.IsCategory() ? i : serieData.GetData(0, axis.inverse);
-                var relativedValue = serieData.GetCurrData(1, dataChangeDuration, relativedAxis.inverse, yMinValue, yMaxValue);
+                var relativedValue = serieData.GetCurrData(1, dataChangeDuration, relativedAxis.inverse, yMinValue, yMaxValue, serie.animation.unscaledTime);
                 var borderWidth = relativedValue == 0 ? 0 : itemStyle.runtimeBorderWidth;
 
                 if (!serieData.interact.TryGetColor(ref areaColor, ref areaToColor, ref interacting))
                 {
-                    areaColor = SerieHelper.GetItemColor(serie, serieData, chart.theme, colorIndex, highlight);
-                    areaToColor = SerieHelper.GetItemToColor(serie, serieData, chart.theme, colorIndex, highlight);
+                    SerieHelper.GetItemColor(out areaColor, out areaToColor, serie, serieData, chart.theme);
                     serieData.interact.SetColor(ref interacting, areaColor, areaToColor);
                 }
 
@@ -200,6 +184,7 @@ namespace XCharts.Runtime
                 serieData.context.position = top;
                 serieData.context.rect = Rect.MinMaxRect(plb.x, plb.y, prb.x, prt.y);
                 serie.context.dataPoints.Add(top);
+                serie.context.dataIndexs.Add(serieData.index);
                 DrawNormalBar(vh, serie, serieData, itemStyle, colorIndex, highlight, gap, barWidth,
                     pX, pY, plb, plt, prt, prb, false, m_SerieGrid, areaColor, areaToColor);
 
@@ -231,7 +216,7 @@ namespace XCharts.Runtime
                 else
                 {
                     if (axis.context.minMaxRange <= 0) pY = grid.context.y;
-                    else pY = grid.context.y + (float)((value - axis.context.minValue) / axis.context.minMaxRange) * (grid.context.height - barWidth);
+                    else pY = grid.context.y + (float) ((value - axis.context.minValue) / axis.context.minMaxRange) * (grid.context.height - barWidth);
                 }
                 pX = AxisHelper.GetAxisValuePosition(grid, relativedAxis, categoryWidth, 0);
             }
@@ -244,7 +229,7 @@ namespace XCharts.Runtime
                 else
                 {
                     if (axis.context.minMaxRange <= 0) pX = grid.context.x;
-                    else pX = grid.context.x + (float)((value - axis.context.minValue) / axis.context.minMaxRange) * (grid.context.width - barWidth);
+                    else pX = grid.context.x + (float) ((value - axis.context.minValue) / axis.context.minMaxRange) * (grid.context.width - barWidth);
                 }
                 pY = AxisHelper.GetAxisValuePosition(grid, relativedAxis, categoryWidth, 0);
             }

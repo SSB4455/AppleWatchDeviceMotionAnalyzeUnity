@@ -1,4 +1,3 @@
-﻿
 using UnityEditor;
 using UnityEngine;
 using XCharts.Runtime;
@@ -19,6 +18,7 @@ namespace XCharts.Editor
                 PropertyField(prop, "m_Color0");
                 PropertyField(prop, "m_ToColor");
                 PropertyField(prop, "m_ToColor2");
+                PropertyField(prop, "m_MarkColor");
                 PropertyField(prop, "m_BackgroundColor");
                 PropertyField(prop, "m_BackgroundWidth");
                 PropertyField(prop, "m_CenterColor");

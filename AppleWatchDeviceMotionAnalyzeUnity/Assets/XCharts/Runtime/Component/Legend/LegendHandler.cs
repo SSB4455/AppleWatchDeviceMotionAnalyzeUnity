@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,6 +11,7 @@ namespace XCharts.Runtime
     internal sealed class LegendHandler : MainComponentHandler<Legend>
     {
         private static readonly string s_LegendObjectName = "legend";
+        private static readonly char[] s_NameSplit = new char[] { '_' };
 
         public override void InitComponent()
         {
@@ -40,6 +40,12 @@ namespace XCharts.Runtime
             DrawLegend(vh);
         }
 
+        public override void OnSerieDataUpdate(int serieIndex)
+        {
+            if (FormatterHelper.NeedFormat(component.formatter))
+                component.refreshComponent();
+        }
+
         private void InitLegend(Legend legend)
         {
             legend.painter = null;
@@ -47,10 +53,14 @@ namespace XCharts.Runtime
             {
                 legend.OnChanged();
                 var legendObject = ChartHelper.AddObject(s_LegendObjectName + legend.index, chart.transform, chart.chartMinAnchor,
-                     chart.chartMaxAnchor, chart.chartPivot, chart.chartSizeDelta);
+                    chart.chartMaxAnchor, chart.chartPivot, chart.chartSizeDelta);
                 legend.gameObject = legendObject;
                 legendObject.hideFlags = chart.chartHideFlags;
+                //ChartHelper.DestoryGameObjectByMatch(legendObject.transform, "_");
                 SeriesHelper.UpdateSerieNameList(chart, ref chart.m_LegendRealShowName);
+                legend.context.background = ChartHelper.AddIcon("background", legendObject.transform, 0, 0);
+                legend.context.background.transform.SetSiblingIndex(0);
+                ChartHelper.SetBackground(legend.context.background, legend.background);
                 List<string> datas;
                 if (legend.show && legend.data.Count > 0)
                 {
@@ -77,18 +87,20 @@ namespace XCharts.Runtime
                 for (int i = 0; i < datas.Count; i++)
                 {
                     if (!SeriesHelper.IsLegalLegendName(datas[i])) continue;
-                    string legendName = legend.GetFormatterContent(datas[i]);
+                    string legendName = datas[i];
+                    var legendContent = GetFormatterContent(legend, i, datas[i]);
                     var readIndex = chart.m_LegendRealShowName.IndexOf(datas[i]);
                     var active = chart.IsActiveByLegend(datas[i]);
                     var bgColor = LegendHelper.GetIconColor(chart, legend, readIndex, datas[i], active);
-                    var item = LegendHelper.AddLegendItem(legend, i, datas[i], legendObject.transform, chart.theme,
-                        legendName, bgColor, active, readIndex);
+                    bgColor.a = legend.itemOpacity;
+                    var item = LegendHelper.AddLegendItem(chart, legend, i, datas[i], legendObject.transform, chart.theme,
+                        legendContent, bgColor, active, readIndex);
                     legend.SetButton(legendName, item, totalLegend);
                     ChartHelper.ClearEventListener(item.button.gameObject);
                     ChartHelper.AddEventListener(item.button.gameObject, EventTriggerType.PointerDown, (data) =>
                     {
                         if (data.selectedObject == null || legend.selectedMode == Legend.SelectedMode.None) return;
-                        var temp = data.selectedObject.name.Split('_');
+                        var temp = data.selectedObject.name.Split(s_NameSplit, 2);
                         string selectedName = temp[1];
                         int clickedIndex = int.Parse(temp[0]);
                         if (legend.selectedMode == Legend.SelectedMode.Multiple)
@@ -106,7 +118,7 @@ namespace XCharts.Runtime
                             {
                                 for (int n = 0; n < btnList.Length; n++)
                                 {
-                                    temp = btnList[n].name.Split('_');
+                                    temp = btnList[n].name.Split(s_NameSplit, 2);
                                     selectedName = btnList[n].legendName;
                                     var index = btnList[n].index;
                                     OnLegendButtonClick(legend, n, selectedName, index == clickedIndex ? true : false);
@@ -117,7 +129,7 @@ namespace XCharts.Runtime
                     ChartHelper.AddEventListener(item.button.gameObject, EventTriggerType.PointerEnter, (data) =>
                     {
                         if (item.button == null) return;
-                        var temp = item.button.name.Split('_');
+                        var temp = item.button.name.Split(s_NameSplit, 2);
                         string selectedName = temp[1];
                         int index = int.Parse(temp[0]);
                         OnLegendButtonEnter(legend, index, selectedName);
@@ -125,7 +137,7 @@ namespace XCharts.Runtime
                     ChartHelper.AddEventListener(item.button.gameObject, EventTriggerType.PointerExit, (data) =>
                     {
                         if (item.button == null) return;
-                        var temp = item.button.name.Split('_');
+                        var temp = item.button.name.Split(s_NameSplit, 2);
                         string selectedName = temp[1];
                         int index = int.Parse(temp[0]);
                         OnLegendButtonExit(legend, index, selectedName);
@@ -134,6 +146,20 @@ namespace XCharts.Runtime
                 LegendHelper.ResetItemPosition(legend, chart.chartPosition, chart.chartWidth, chart.chartHeight);
             };
             legend.refreshComponent();
+        }
+
+        private string GetFormatterContent(Legend legend, int dataIndex, string category)
+        {
+            if (string.IsNullOrEmpty(legend.formatter))
+                return category;
+            else
+            {
+                var content = legend.formatter.Replace("{name}", category);
+                content = content.Replace("{value}", category);
+                var serie = chart.GetSerie(0);
+                FormatterHelper.ReplaceContent(ref content, dataIndex, legend.numericFormatter, serie, chart, category);
+                return content;
+            }
         }
 
         private void OnLegendButtonClick(Legend legend, int index, string legendName, bool show)
@@ -173,31 +199,38 @@ namespace XCharts.Runtime
                 if (legend.iconType == Legend.Type.Auto)
                 {
                     var serie = chart.GetSerie(item.legendName);
-                    if (serie != null && serie is Line)
+                    if (serie != null)
                     {
-                        var sp = new Vector3(rect.center.x - rect.width / 2, rect.center.y);
-                        var ep = new Vector3(rect.center.x + rect.width / 2, rect.center.y);
-                        UGL.DrawLine(vh, sp, ep, chart.settings.legendIconLineWidth, color);
-                        if (!serie.symbol.show) continue;
-                        switch (serie.symbol.type)
+                        if (serie is Line || serie is SimplifiedLine)
                         {
-                            case SymbolType.None:
-                                continue;
-                            case SymbolType.Circle:
-                                iconType = Legend.Type.Circle;
-                                break;
-                            case SymbolType.Diamond:
-                                iconType = Legend.Type.Diamond;
-                                break;
-                            case SymbolType.EmptyCircle:
-                                iconType = Legend.Type.EmptyCircle;
-                                break;
-                            case SymbolType.Rect:
-                                iconType = Legend.Type.Rect;
-                                break;
-                            case SymbolType.Triangle:
-                                iconType = Legend.Type.Triangle;
-                                break;
+                            var sp = new Vector3(rect.center.x - rect.width / 2, rect.center.y);
+                            var ep = new Vector3(rect.center.x + rect.width / 2, rect.center.y);
+                            UGL.DrawLine(vh, sp, ep, chart.settings.legendIconLineWidth, color);
+                            if (!serie.symbol.show) continue;
+                            switch (serie.symbol.type)
+                            {
+                                case SymbolType.None:
+                                    continue;
+                                case SymbolType.Circle:
+                                    iconType = Legend.Type.Circle;
+                                    break;
+                                case SymbolType.Diamond:
+                                    iconType = Legend.Type.Diamond;
+                                    break;
+                                case SymbolType.EmptyCircle:
+                                    iconType = Legend.Type.EmptyCircle;
+                                    break;
+                                case SymbolType.Rect:
+                                    iconType = Legend.Type.Rect;
+                                    break;
+                                case SymbolType.Triangle:
+                                    iconType = Legend.Type.Triangle;
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            iconType = Legend.Type.Rect;
                         }
                     }
                     else
@@ -225,6 +258,12 @@ namespace XCharts.Runtime
                         break;
                     case Legend.Type.Triangle:
                         UGL.DrawTriangle(vh, rect.center, 1.2f * radius, color);
+                        break;
+                    case Legend.Type.Candlestick:
+                        UGL.DrawRoundRectangle(vh, rect.center, rect.width / 2, rect.height / 2, color, color,
+                            0, null, false, 0.5f);
+                        UGL.DrawLine(vh, new Vector3(rect.center.x, rect.center.y - rect.height / 2),
+                            new Vector3(rect.center.x, rect.center.y + rect.height / 2), 1, color);
                         break;
                 }
             }

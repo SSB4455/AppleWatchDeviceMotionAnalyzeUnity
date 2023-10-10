@@ -19,13 +19,13 @@ public class MotionParameterLineChartScript : MonoBehaviour
 	private void Start()
 	{
 		lineChart = GetComponent<LineChart>();
-		lineChart.ClearData();
+		lineChart.ClearSerieData();
 
 		parameterDropdown.ClearOptions();
 		parameterDropdown.AddOptions(lastShowParameterList);
 		parameterDropdown.onValueChanged.AddListener((value) =>
 		{
-			lineChart.ClearData();
+			lineChart.ClearSerieData();
 			lastShowParameter = parameterDropdown.options[value].text;
 			foreach (var json in watchDataJsonList)
 			{
@@ -43,15 +43,15 @@ public class MotionParameterLineChartScript : MonoBehaviour
 			watchDataJsonList.Add(dataJson);
 		}
 		//Debug.Log("dataJson " + dataJson.toJson());
-		float ts = 0;
-		if (dataJson.ContainsKey("ts"))
-		{
-			ts = (float)(double)dataJson["ts"];
-		}
 		if (lastShowParameter != null && dataJson.ContainsKey(lastShowParameter))
 		{
+			float ts = 0;
+			if (dataJson.ContainsKey("ts"))
+			{
+				ts = (float)(double)dataJson["ts"];
+			}
 			ArrayList parameterValues = dataJson[lastShowParameter] as ArrayList;
-			for (int i = 0; i < parameterValues.Count; i++)
+			for (int i = 0; parameterValues != null && i < parameterValues.Count; i++)
 			{
 				string paraStr = parameterValues[i].ToString();
 				float valuei = (paraStr.StartsWith('-') ? -1 : 1) * Convert.ToInt32(paraStr.Replace("-", ""), 16) / 1000f;

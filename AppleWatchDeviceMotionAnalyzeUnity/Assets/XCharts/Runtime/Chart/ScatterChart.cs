@@ -1,4 +1,3 @@
-﻿
 using UnityEngine;
 
 namespace XCharts.Runtime
@@ -7,21 +6,22 @@ namespace XCharts.Runtime
     [ExecuteInEditMode]
     [RequireComponent(typeof(RectTransform))]
     [DisallowMultipleComponent]
+    [HelpURL("https://xcharts-team.github.io/docs/configuration")]
     public class ScatterChart : BaseChart
     {
         protected override void DefaultChart()
         {
             AddChartComponentWhenNoExist<GridCoord>();
 
-            var tooltip = GetOrAddChartComponent<Tooltip>();
+            var tooltip = EnsureChartComponent<Tooltip>();
             tooltip.type = Tooltip.Type.None;
             tooltip.trigger = Tooltip.Trigger.Item;
 
-            var xAxis = GetOrAddChartComponent<XAxis>();
+            var xAxis = EnsureChartComponent<XAxis>();
             xAxis.type = Axis.AxisType.Value;
             xAxis.boundaryGap = false;
 
-            var yAxis = GetOrAddChartComponent<YAxis>();
+            var yAxis = EnsureChartComponent<YAxis>();
             yAxis.type = Axis.AxisType.Value;
             yAxis.boundaryGap = false;
 

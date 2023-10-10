@@ -1,4 +1,3 @@
-﻿
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -44,6 +43,10 @@ namespace XCharts.Runtime
             /// 菱形。
             /// </summary>
             Diamond,
+            /// <summary>
+            /// 烛台（可用于K线图）。
+            /// </summary>
+            Candlestick,
         }
         /// <summary>
         /// Selected mode of legend, which controls whether series can be toggled displaying by clicking legends.
@@ -63,7 +66,8 @@ namespace XCharts.Runtime
             /// 无法选择。
             /// </summary>
             None
-        };
+        }
+
         [SerializeField] private bool m_Show = true;
         [SerializeField] private Type m_IconType = Type.Auto;
         [SerializeField] private SelectedMode m_SelectedMode = SelectedMode.Multiple;
@@ -73,11 +77,16 @@ namespace XCharts.Runtime
         [SerializeField] private float m_ItemHeight = 12.0f;
         [SerializeField] private float m_ItemGap = 10f;
         [SerializeField] private bool m_ItemAutoColor = true;
-        [SerializeField] private bool m_TextAutoColor = false;
+        [SerializeField] private float m_ItemOpacity = 1;
         [SerializeField] private string m_Formatter;
+        [SerializeField] protected string m_NumericFormatter = "";
         [SerializeField] private LabelStyle m_LabelStyle = new LabelStyle();
         [SerializeField] private List<string> m_Data = new List<string>();
         [SerializeField] private List<Sprite> m_Icons = new List<Sprite>();
+        [SerializeField] private List<Color> m_Colors = new List<Color>();
+        [SerializeField][Since("v3.1.0")] protected ImageStyle m_Background = new ImageStyle() { show = false };
+        [SerializeField][Since("v3.1.0")] protected Padding m_Padding = new Padding();
+        [SerializeField][Since("v3.6.0")] private List<Vector3> m_Positions = new List<Vector3>();
 
         public LegendContext context = new LegendContext();
 
@@ -93,7 +102,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// Type of legend.
         /// |图例类型。
-        /// [default:Type.Auto] 
         /// </summary>
         public Type iconType
         {
@@ -103,7 +111,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// Selected mode of legend, which controls whether series can be toggled displaying by clicking legends.
         /// |选择模式。控制是否可以通过点击图例改变系列的显示状态。默认开启图例选择，可以设成 None 关闭。
-        /// [default:SelectedMode.Multiple] 
         /// </summary>
         public SelectedMode selectedMode
         {
@@ -113,7 +120,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// Specify whether the layout of legend component is horizontal or vertical.
         /// |布局方式是横还是竖。
-        /// [default:Orient.Horizonal]
         /// </summary>
         public Orient orient
         {
@@ -123,7 +129,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// The location of legend.
         /// |图例显示的位置。
-        /// [default:Location.defaultTop]
         /// </summary>
         public Location location
         {
@@ -133,7 +138,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// Image width of legend symbol.
         /// |图例标记的图形宽度。
-        /// [default:24f]
         /// </summary>
         public float itemWidth
         {
@@ -143,7 +147,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// Image height of legend symbol.
         /// |图例标记的图形高度。
-        /// [default:12f]
         /// </summary>
         public float itemHeight
         {
@@ -153,7 +156,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// The distance between each legend, horizontal distance in horizontal layout, and vertical distance in vertical layout.
         /// |图例每项之间的间隔。横向布局时为水平间隔，纵向布局时为纵向间隔。
-        /// [default:10f]
         /// </summary>
         public float itemGap
         {
@@ -163,7 +165,6 @@ namespace XCharts.Runtime
         /// <summary>
         /// Whether the legend symbol matches the color automatically.
         /// |图例标记的图形是否自动匹配颜色。
-        /// [default:true]
         /// </summary>
         public bool itemAutoColor
         {
@@ -171,20 +172,29 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetStruct(ref m_ItemAutoColor, value)) SetComponentDirty(); }
         }
         /// <summary>
-        /// Whether the legend text matches the color automatically.
-        /// |图例标记的文本是否自动匹配颜色。
-        /// [default:false]
+        /// the opacity of item color.
+        /// |图例标记的图形的颜色透明度。
         /// </summary>
-        public bool textAutoColor
+        public float itemOpacity
         {
-            get { return m_TextAutoColor; }
-            set { if (PropertyUtil.SetStruct(ref m_TextAutoColor, value)) SetComponentDirty(); }
+            get { return m_ItemOpacity; }
+            set { if (PropertyUtil.SetStruct(ref m_ItemOpacity, value)) SetComponentDirty(); }
         }
         /// <summary>
-        /// Legend content string template formatter. Support for wrapping lines with \n. Template:{name}.
+        /// Standard numeric format strings.
+        /// |标准数字格式字符串。用于将数值格式化显示为字符串。
+        /// 使用Axx的形式：A是格式说明符的单字符，支持C货币、D十进制、E指数、F定点数、G常规、N数字、P百分比、R往返、X十六进制的。xx是精度说明，从0-99。
+        /// 参考：https://docs.microsoft.com/zh-cn/dotnet/standard/base-types/standard-numeric-format-strings
+        /// </summary>
+        public string numericFormatter
+        {
+            get { return m_NumericFormatter; }
+            set { if (PropertyUtil.SetClass(ref m_NumericFormatter, value)) SetComponentDirty(); }
+        }
+        /// <summary>
+        /// Legend content string template formatter. Support for wrapping lines with \n. Template:{value}.
         /// |图例内容字符串模版格式器。支持用 \n 换行。
-        /// 模板变量为图例名称 {name}。
-        /// [default:null]
+        /// 模板变量为图例名称 {value}。其他模板变量参考Toolip的itemFormatter。
         /// </summary>
         public string formatter
         {
@@ -201,9 +211,27 @@ namespace XCharts.Runtime
             set { if (PropertyUtil.SetClass(ref m_LabelStyle, value)) SetComponentDirty(); }
         }
         /// <summary>
+        /// the sytle of background.
+        /// |背景图样式。
+        /// </summary>
+        public ImageStyle background
+        {
+            get { return m_Background; }
+            set { if (PropertyUtil.SetClass(ref m_Background, value)) SetAllDirty(); }
+        }
+        /// <summary>
+        /// the paddinng of item and background.
+        /// |图例标记和背景的间距。
+        /// </summary>
+        public Padding padding
+        {
+            get { return m_Padding; }
+            set { if (PropertyUtil.SetClass(ref m_Padding, value)) SetAllDirty(); }
+        }
+        /// <summary>
         /// Data array of legend. An array item is usually a name representing string. (If it is a pie chart, 
         /// it could also be the name of a single data in the pie chart) of a series.
-        /// |If data is not specified, it will be auto collected from series.
+        /// If data is not specified, it will be auto collected from series.
         /// |图例的数据数组。数组项通常为一个字符串，每一项代表一个系列的 name（如果是饼图，也可以是饼图单个数据的 name）。
         /// 如果 data 没有被指定，会自动从当前系列中获取。指定data时里面的数据项和serie匹配时才会生效。
         /// </summary>
@@ -219,6 +247,24 @@ namespace XCharts.Runtime
         {
             get { return m_Icons; }
             set { if (value != null) { m_Icons = value; SetComponentDirty(); } }
+        }
+        /// <summary>
+        /// the colors of legend item.
+        /// |图例标记的颜色列表。
+        /// </summary>
+        public List<Color> colors
+        {
+            get { return m_Colors; }
+            set { if (value != null) { m_Colors = value; SetAllDirty(); } }
+        }
+        /// <summary>
+        /// the custom positions of legend item.
+        /// |图例标记的自定义位置列表。
+        /// </summary>
+        public List<Vector3> positions
+        {
+            get { return m_Positions; }
+            set { if (value != null) { m_Positions = value; SetAllDirty(); } }
         }
         /// <summary>
         /// 图表是否需要刷新（图例组件不需要刷新图表）
@@ -384,6 +430,22 @@ namespace XCharts.Runtime
             }
         }
 
+        public Color GetColor(int index)
+        {
+            if (index >= 0 && index < m_Colors.Count)
+                return m_Colors[index];
+            else
+                return Color.white;
+        }
+
+        public Vector3 GetPosition(int index, Vector3 defaultPos)
+        {
+            if (index >= 0 && index < m_Positions.Count)
+                return m_Positions[index];
+            else
+                return defaultPos;
+        }
+
         /// <summary>
         /// Callback handling when parameters change.
         /// |参数变更时的回调处理。
@@ -391,24 +453,6 @@ namespace XCharts.Runtime
         public void OnChanged()
         {
             m_Location.OnChanged();
-        }
-
-        /// <summary>
-        /// 获得图例格式化后的显示内容。
-        /// </summary>
-        /// <param name="category"></param>
-        /// <returns></returns>
-        public string GetFormatterContent(string category)
-        {
-            if (string.IsNullOrEmpty(m_Formatter))
-                return category;
-            else
-            {
-                var content = m_Formatter.Replace("{name}", category);
-                content = content.Replace("\\n", "\n");
-                content = content.Replace("<br/>", "\n");
-                return content;
-            }
         }
     }
 }

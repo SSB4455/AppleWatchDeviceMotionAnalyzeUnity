@@ -1,8 +1,8 @@
-﻿using UnityEngine;
-using System.Collections.Generic;
 using System;
-using UnityEngine.UI;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace XCharts.Runtime
 {
@@ -69,7 +69,15 @@ namespace XCharts.Runtime
         /// </summary>
         public Vector3 chartPosition { get { return m_ChartPosition; } }
         public Rect chartRect { get { return m_ChartRect; } }
+        /// <summary>
+        /// The callback function of chart init.
+        /// |图表的初始化完成回调。
+        /// </summary>
         public Action onInit { set { m_OnInit = value; } }
+        /// <summary>
+        /// The callback function of chart update.
+        /// |图表的Update回调。
+        /// </summary>
         public Action onUpdate { set { m_OnUpdate = value; } }
         /// <summary>
         /// 自定义绘制回调。在绘制Serie前调用。
@@ -84,7 +92,11 @@ namespace XCharts.Runtime
         /// </summary>
         public Action<VertexHelper, Serie> onDrawAfterSerie { set { m_OnDrawSerieAfter = value; } }
         /// <summary>
-        /// 自定义Top绘制回调。在绘制Tooltip前调用。
+        /// 自定义Upper层绘制回调。在绘制Tooltip前调用。
+        /// </summary>
+        public Action<VertexHelper> onDrawUpper { set { m_OnDrawUpper = value; } }
+        /// <summary>
+        /// 自定义Top层绘制回调。在绘制Tooltip前调用。
         /// </summary>
         public Action<VertexHelper> onDrawTop { set { m_OnDrawTop = value; } }
         /// <summary>
@@ -92,15 +104,48 @@ namespace XCharts.Runtime
         /// </summary>
         public CustomDrawGaugePointerFunction customDrawGaugePointerFunction { set { m_CustomDrawGaugePointerFunction = value; } get { return m_CustomDrawGaugePointerFunction; } }
         /// <summary>
-        /// the callback function of click pie area.
+        /// the callback function of pointer click serie.
+        /// |鼠标点击Serie回调。
+        /// </summary>
+        [Since("v3.6.0")]
+        public Action<SerieEventData> onSerieClick { set { m_OnSerieClick = value; m_ForceOpenRaycastTarget = true; } get { return m_OnSerieClick; } }
+        /// <summary>
+        /// the callback function of pointer down serie.
+        /// |鼠标按下Serie回调。
+        /// </summary>
+        [Since("v3.6.0")]
+        public Action<SerieEventData> onSerieDown { set { m_OnSerieDown = value; m_ForceOpenRaycastTarget = true; } get { return m_OnSerieDown; } }
+        /// <summary>
+        /// the callback function of pointer enter serie.
+        /// |鼠标进入Serie回调。
+        /// </summary>
+        [Since("v3.6.0")]
+        public Action<SerieEventData> onSerieEnter { set { m_OnSerieEnter = value; m_ForceOpenRaycastTarget = true; } get { return m_OnSerieEnter; } }
+        /// <summary>
+        /// the callback function of pointer exit serie.
+        /// |鼠标离开Serie回调。
+        /// </summary>
+        [Since("v3.6.0")]
+        public Action<SerieEventData> onSerieExit { set { m_OnSerieExit = value; m_ForceOpenRaycastTarget = true; } get { return m_OnSerieExit; } }
+        /// <summary>
+        /// the callback function of pointer click pie area.
         /// |点击饼图区域回调。参数：PointerEventData，SerieIndex，SerieDataIndex
         /// </summary>
-        public Action<PointerEventData, int, int> onPointerClickPie { set { m_OnPointerClickPie = value; m_ForceOpenRaycastTarget = true; } get { return m_OnPointerClickPie; } }
+        [Obsolete("Use \"onSerieClick\" instead", true)]
+        public Action<PointerEventData, int, int> onPointerClickPie { get; set; }
+        /// <summary>
+        /// the callback function of pointer enter pie area.
+        /// |鼠标进入和离开饼图区域回调，SerieDataIndex为-1时表示离开。参数：PointerEventData，SerieIndex，SerieDataIndex
+        /// </summary>
+        [Since("v3.3.0")]
+        [Obsolete("Use \"onSerieEnter\" instead", true)]
+        public Action<int, int> onPointerEnterPie { set { m_OnPointerEnterPie = value; m_ForceOpenRaycastTarget = true; } get { return m_OnPointerEnterPie; } }
         /// <summary>
         /// the callback function of click bar.
         /// |点击柱形图柱条回调。参数：eventData, dataIndex
         /// </summary>
-        public Action<PointerEventData, int> onPointerClickBar { set { m_OnPointerClickBar = value; m_ForceOpenRaycastTarget = true; } }
+        [Obsolete("Use \"onSerieClick\" instead", true)]
+        public Action<PointerEventData, int> onPointerClickBar { get; set; }
         /// <summary>
         /// 坐标轴变更数据索引时回调。参数：axis, dataIndex/dataValue
         /// </summary>
@@ -142,6 +187,14 @@ namespace XCharts.Runtime
                 serie.ResetInteract();
             m_RefreshChart = true;
             if (m_Painter) m_Painter.Refresh();
+            foreach (var painter in m_PainterList) painter.Refresh();
+            if (m_PainterUpper) m_PainterUpper.Refresh();
+            if (m_PainterTop) m_PainterTop.Refresh();
+        }
+
+        public override void RefreshGraph()
+        {
+            RefreshChart();
         }
 
         /// <summary>
@@ -164,16 +217,36 @@ namespace XCharts.Runtime
             RefreshPainter(serie);
         }
 
-
         /// <summary>
-        /// Remove all series and legend data.
-        /// |It just emptying all of serie's data without emptying the list of series.
-        /// |清除所有数据，系列中只是移除数据，列表会保留。
+        /// Clear all components and series data. Note: serie only empties the data and does not remove serie.
+        /// |清空所有组件和Serie的数据。注意：Serie只是清空数据，不会移除Serie。
         /// </summary>
         public virtual void ClearData()
         {
+            ClearSerieData();
+            ClearComponentData();
+        }
+
+        [Since("v3.4.0")]
+        /// <summary>
+        /// Clear the data of all series.
+        /// |清空所有serie的数据。
+        /// </summary>
+        public virtual void ClearSerieData()
+        {
             foreach (var serie in m_Series)
                 serie.ClearData();
+            m_CheckAnimation = false;
+            RefreshChart();
+        }
+
+        [Since("v3.4.0")]
+        /// <summary>
+        /// Clear the data of all components.
+        /// |清空所有组件的数据。
+        /// </summary>
+        public virtual void ClearComponentData()
+        {
             foreach (var component in m_Components)
                 component.ClearData();
             m_CheckAnimation = false;
@@ -181,14 +254,28 @@ namespace XCharts.Runtime
         }
 
         /// <summary>
-        /// Remove all data from series and legend.
-        /// |The series list is also cleared.
-        /// |清除所有系列和图例数据，系列的列表也会被清除。
+        /// Empty all component data and remove all series. Use the chart again and again to tell the truth.
+        /// Note: The component only clears the data part, and the parameters are retained and not reset.
+        /// |清空所有组件数据，并移除所有Serie。一般在图表重新初始化时使用。
+        /// 注意：组件只清空数据部分，参数会保留不会被重置。
         /// </summary>
         public virtual void RemoveData()
         {
             foreach (var component in m_Components)
                 component.ClearData();
+            m_Series.Clear();
+            m_SerieHandlers.Clear();
+            m_CheckAnimation = false;
+            RefreshChart();
+        }
+
+        /// <summary>
+        /// Remove all of them Serie. This interface is used when Serie needs to be removed only, and RemoveData() is generally used in other cases.
+        /// |移除所有的Serie。当确认只需要移除Serie时使用该接口，其他情况下一般用RemoveData()。
+        /// </summary>
+        [Since("v3.2.0")]
+        public virtual void RemoveAllSerie()
+        {
             m_Series.Clear();
             m_SerieHandlers.Clear();
             m_CheckAnimation = false;
@@ -225,7 +312,7 @@ namespace XCharts.Runtime
                     {
                         var legend = component as Legend;
                         var iconColor = LegendHelper.GetIconColor(this, legend, legendIndex, legendName, active);
-                        var contentColor = LegendHelper.GetContentColor(legendIndex, legend, m_Theme, active);
+                        var contentColor = LegendHelper.GetContentColor(this, legendIndex, legendName, legend, m_Theme, active);
                         legend.UpdateButtonColor(legendName, iconColor);
                         legend.UpdateContentColor(legendName, contentColor);
                     }
@@ -308,8 +395,10 @@ namespace XCharts.Runtime
         /// fadeIn animation.
         /// |开始渐入动画。
         /// </summary>
-        public void AnimationFadeIn()
+        public void AnimationFadeIn(bool reset = true)
         {
+            if (reset)
+                AnimationReset();
             foreach (var serie in m_Series) serie.AnimationFadeIn();
         }
 
@@ -374,7 +463,7 @@ namespace XCharts.Runtime
         public bool IsInChart(float x, float y)
         {
             if (x < m_ChartX || x > m_ChartX + m_ChartWidth ||
-               y < m_ChartY || y > m_ChartY + m_ChartHeight)
+                y < m_ChartY || y > m_ChartY + m_ChartHeight)
             {
                 return false;
             }
@@ -410,7 +499,7 @@ namespace XCharts.Runtime
         /// 转换X轴和Y轴的配置
         /// </summary>
         /// <param name="index">坐标轴索引，0或1</param>
-        public void CovertXYAxis(int index)
+        public void ConvertXYAxis(int index)
         {
             List<MainComponent> m_XAxes;
             List<MainComponent> m_YAxes;
@@ -507,6 +596,19 @@ namespace XCharts.Runtime
         }
 
         /// <summary>
+        /// 设置Upper Painter的材质球
+        /// </summary>
+        /// <param name="material"></param>
+        public void SetUpperPainterMaterial(Material material)
+        {
+            settings.upperPainterMaterial = material;
+            if (m_PainterUpper != null)
+            {
+                m_PainterUpper.material = material;
+            }
+        }
+
+        /// <summary>
         /// 设置Top Painter的材质球
         /// </summary>
         /// <param name="material"></param>
@@ -525,17 +627,104 @@ namespace XCharts.Runtime
             return theme.GetBackgroundColor(background);
         }
 
-        public Color32 GetItemColor(Serie serie, SerieData serieData, bool highlight = false)
+        [Since("v3.4.0")]
+        /// <summary>
+        /// 获得Serie的标识颜色。
+        /// </summary>
+        /// <param name="serie"></param>
+        /// <param name="serieData"></param>
+        /// <returns></returns>
+        public Color32 GetMarkColor(Serie serie, SerieData serieData)
         {
-            var colorIndex = serieData == null || !serie.useDataNameForColor
-                ? GetLegendRealShowNameIndex(serie.legendName)
-                : GetLegendRealShowNameIndex(serieData.legendName);
-            return SerieHelper.GetItemColor(serie, serieData, m_Theme, colorIndex, highlight);
+            var itemStyle = SerieHelper.GetItemStyle(serie, serieData);
+            if (ChartHelper.IsClearColor(itemStyle.markColor))
+            {
+                return GetItemColor(serie, serieData);
+            }
+            else
+            {
+                return itemStyle.markColor;
+            }
         }
 
-        public Color32 GetItemColor(Serie serie, bool highlight = false)
+        public Color32 GetItemColor(Serie serie, SerieData serieData)
         {
-            return SerieHelper.GetItemColor(serie, null, m_Theme, serie.context.colorIndex, highlight);
+            Color32 color, toColor;
+            SerieHelper.GetItemColor(out color, out toColor, serie, serieData, m_Theme);
+            return color;
+        }
+
+        public Color32 GetItemColor(Serie serie, SerieData serieData, int colorIndex)
+        {
+            Color32 color, toColor;
+            SerieHelper.GetItemColor(out color, out toColor, serie, serieData, m_Theme, colorIndex);
+            return color;
+        }
+
+        public Color32 GetItemColor(Serie serie)
+        {
+            Color32 color, toColor;
+            SerieHelper.GetItemColor(out color, out toColor, serie, null, m_Theme);
+            return color;
+        }
+
+        /// <summary>
+        /// trigger tooltip by data index.
+        /// |尝试触发指定数据项的Tooltip.
+        /// </summary>
+        /// <param name="dataIndex">数据项索引</param>
+        /// <returns></returns>
+        [Since("v3.7.0")]
+        public bool TriggerTooltip(int dataIndex)
+        {
+            var serie = GetSerie(0);
+            if (serie == null) return false;
+            var dataPoints = serie.context.dataPoints;
+            var dataPoint = Vector3.zero;
+            if (dataPoints.Count == 0)
+            {
+                if (serie.dataCount == 0) return false;
+                dataIndex = dataIndex % serie.dataCount;
+                var serieData = serie.GetSerieData(dataIndex);
+                if (serieData == null) return false;
+                dataPoint = serie.GetSerieData(dataIndex).context.position;
+            }
+            else
+            {
+                dataIndex = dataIndex % dataPoints.Count;
+                dataPoint = dataPoints[dataIndex];
+            }
+            return TriggerTooltip(dataPoint);
+        }
+
+        /// <summary>
+        /// trigger tooltip by chart local position.
+        /// |在指定的位置尝试触发Tooltip.
+        /// </summary>
+        /// <param name="localPosition"></param>
+        /// <returns></returns>
+        [Since("v3.7.0")]
+        public bool TriggerTooltip(Vector3 localPosition)
+        {
+            var screenPoint = LocalPointToScreenPoint(localPosition);
+            var eventData = new PointerEventData(EventSystem.current);
+            eventData.position = screenPoint;
+            OnPointerEnter(eventData);
+            return true;
+        }
+
+        /// <summary>
+        /// cancel tooltip.
+        /// |取消Tooltip.
+        /// </summary>
+        [Since("v3.7.0")]
+        public void CancelTooltip()
+        {
+            var tooltip = GetChartComponent<Tooltip>();
+            if (tooltip != null)
+            {
+                tooltip.SetActive(false);
+            }
         }
     }
 }

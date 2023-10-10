@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -23,5 +22,10 @@ namespace XCharts.Runtime
         /// </summary>
         public double endValue { get; set; }
         public bool invert { get; set; }
+
+        public bool isMarqueeDrag { get; set; }
+        public Vector3 marqueeStartPos { get; set; }
+        public Vector3 marqueeEndPos { get; set; }
+        public Rect marqueeRect { get; set; }
     }
 }

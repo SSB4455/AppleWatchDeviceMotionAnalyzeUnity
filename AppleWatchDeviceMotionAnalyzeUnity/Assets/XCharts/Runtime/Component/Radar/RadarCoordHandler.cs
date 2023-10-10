@@ -1,6 +1,5 @@
-
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 using XUGL;
 
@@ -18,14 +17,15 @@ namespace XCharts.Runtime
 
         public override void Update()
         {
+            base.Update();
             if (!chart.isPointerInChart)
             {
                 component.context.isPointerEnter = false;
                 return;
             }
             var radar = component;
-            radar.context.isPointerEnter = radar.show
-                && Vector3.Distance(radar.context.center, chart.pointerPos) <= radar.context.radius;
+            radar.context.isPointerEnter = radar.show &&
+                Vector3.Distance(radar.context.center, chart.pointerPos) <= radar.context.radius;
         }
 
         public override void DrawBase(VertexHelper vh)
@@ -37,11 +37,11 @@ namespace XCharts.Runtime
         {
             float txtHig = 20;
             radar.painter = chart.GetPainter(radar.index);
-            radar.refreshComponent = delegate ()
+            radar.refreshComponent = delegate()
             {
                 radar.UpdateRadarCenter(chart.chartPosition, chart.chartWidth, chart.chartHeight);
                 var radarObject = ChartHelper.AddObject("Radar" + radar.index, chart.transform, chart.chartMinAnchor,
-                     chart.chartMaxAnchor, chart.chartPivot, chart.chartSizeDelta);
+                    chart.chartMaxAnchor, chart.chartPivot, chart.chartSizeDelta);
                 radar.gameObject = radarObject;
                 radar.gameObject.hideFlags = chart.chartHideFlags;
                 ChartHelper.HideAllObject(radarObject.transform, INDICATOR_TEXT);
@@ -52,7 +52,7 @@ namespace XCharts.Runtime
                     var objName = INDICATOR_TEXT + "_" + i;
 
                     var label = ChartHelper.AddChartLabel(objName, radarObject.transform, radar.axisName.labelStyle,
-                                 chart.theme.common, radar.GetFormatterIndicatorContent(i), Color.clear, TextAnchor.MiddleCenter);
+                        chart.theme.common, radar.GetFormatterIndicatorContent(i), Color.clear, TextAnchor.MiddleCenter);
                     label.SetActive(radar.indicator && radar.axisName.labelStyle.show);
                     AxisHelper.AdjustCircleLabelPos(label, pos, radar.context.center, txtHig, radar.axisName.labelStyle.offset);
                 }
@@ -88,6 +88,7 @@ namespace XCharts.Runtime
             var lineType = radar.axisLine.GetType(chart.theme.axis.lineType);
             var splitLineColor = radar.splitLine.GetColor(chart.theme.axis.splitLineColor);
             var splitLineWidth = radar.splitLine.GetWidth(chart.theme.axis.splitLineWidth);
+            splitLineWidth *= 2f;
             for (int i = 0; i < radar.splitNumber; i++)
             {
                 var color = radar.splitArea.GetColor(i, chart.theme.axis);
@@ -95,7 +96,7 @@ namespace XCharts.Runtime
                 if (radar.splitArea.show)
                 {
                     UGL.DrawDoughnut(vh, p, insideRadius, outsideRadius, color, Color.clear,
-                          0, 360, chart.settings.cicleSmoothness);
+                        0, 360, chart.settings.cicleSmoothness);
                 }
                 if (radar.splitLine.show)
                 {
@@ -123,7 +124,8 @@ namespace XCharts.Runtime
             int indicatorNum = radar.indicatorList.Count;
             Vector3 p1, p2, p3, p4;
             Vector3 p = radar.context.center;
-            float angle = 2 * Mathf.PI / indicatorNum;
+            var startAngle = radar.startAngle * Mathf.PI / 180;
+            var angle = 2 * Mathf.PI / indicatorNum;
             var lineColor = radar.axisLine.GetColor(chart.theme.axis.splitLineColor);
             var lineWidth = radar.axisLine.GetWidth(chart.theme.axis.lineWidth);
             var lineType = radar.axisLine.GetType(chart.theme.axis.lineType);
@@ -134,11 +136,11 @@ namespace XCharts.Runtime
             {
                 var color = radar.splitArea.GetColor(i, chart.theme.axis);
                 outsideRadius = insideRadius + block;
-                p1 = new Vector3(p.x + insideRadius * Mathf.Sin(0), p.y + insideRadius * Mathf.Cos(0));
-                p2 = new Vector3(p.x + outsideRadius * Mathf.Sin(0), p.y + outsideRadius * Mathf.Cos(0));
+                p1 = new Vector3(p.x + insideRadius * Mathf.Sin(startAngle), p.y + insideRadius * Mathf.Cos(startAngle));
+                p2 = new Vector3(p.x + outsideRadius * Mathf.Sin(startAngle), p.y + outsideRadius * Mathf.Cos(startAngle));
                 for (int j = 0; j <= indicatorNum; j++)
                 {
-                    float currAngle = j * angle;
+                    float currAngle = startAngle + j * angle;
                     p3 = new Vector3(p.x + outsideRadius * Mathf.Sin(currAngle),
                         p.y + outsideRadius * Mathf.Cos(currAngle));
                     p4 = new Vector3(p.x + insideRadius * Mathf.Sin(currAngle),
@@ -147,7 +149,7 @@ namespace XCharts.Runtime
                     {
                         UGL.DrawQuadrilateral(vh, p1, p2, p3, p4, color);
                     }
-                    if (radar.splitLine.NeedShow(i))
+                    if (radar.splitLine.NeedShow(i, radar.splitNumber))
                     {
                         ChartDrawer.DrawLineStyle(vh, splitLineType, splitLineWidth, p2, p3, splitLineColor);
                     }
@@ -160,7 +162,7 @@ namespace XCharts.Runtime
             {
                 for (int j = 0; j <= indicatorNum; j++)
                 {
-                    float currAngle = j * angle;
+                    float currAngle = startAngle + j * angle;
                     p3 = new Vector3(p.x + outsideRadius * Mathf.Sin(currAngle),
                         p.y + outsideRadius * Mathf.Cos(currAngle));
                     ChartDrawer.DrawLineStyle(vh, lineType, lineWidth, p, p3, lineColor);

@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -65,11 +64,19 @@ namespace XCharts.Runtime
             get { return m_Bottom; }
             set { if (PropertyUtil.SetStruct(ref m_Bottom, value)) SetAllDirty(); }
         }
+        /// <summary>
+        /// width of axis.
+        /// |坐标轴宽。
+        /// </summary>
         public float width
         {
             get { return m_Width; }
             set { if (PropertyUtil.SetStruct(ref m_Width, value)) SetAllDirty(); }
         }
+        /// <summary>
+        /// height of axis.
+        /// |坐标轴高。
+        /// </summary>
         public float height
         {
             get { return m_Height; }
@@ -87,15 +94,15 @@ namespace XCharts.Runtime
 
             if (m_Orient == Orient.Horizonal)
             {
-                context.width = width == 0
-                    ? chartWidth - context.left - context.right
-                    : (width <= 1 ? chartWidth * width : width);
+                context.width = width == 0 ?
+                    chartWidth - context.left - context.right :
+                    (width <= 1 ? chartWidth * width : width);
             }
             else
             {
-                context.width = width == 0
-                    ? chartHeight - context.top - context.bottom
-                    : (width <= 1 ? chartHeight * width : width);
+                context.width = width == 0 ?
+                    chartHeight - context.top - context.bottom :
+                    (width <= 1 ? chartHeight * width : width);
             }
 
             if (context.left != 0 && context.right == 0)

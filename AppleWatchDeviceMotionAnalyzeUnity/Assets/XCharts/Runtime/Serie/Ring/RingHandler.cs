@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -17,10 +16,9 @@ namespace XCharts.Runtime
         public override void Update()
         {
             base.Update();
-            UpdateSerieContext();
         }
 
-        private void UpdateSerieContext()
+        public override void UpdateSerieContext()
         {
             var needCheck = chart.isPointerInChart || m_LegendEnter;
             var needInteract = false;
@@ -75,7 +73,7 @@ namespace XCharts.Runtime
         }
 
         public override void UpdateTooltipSerieParams(int dataIndex, bool showCategory, string category,
-            string marker, string itemFormatter, string numericFormatter,
+            string marker, string itemFormatter, string numericFormatter, string ignoreDataDefaultContent,
             ref List<SerieParams> paramList, ref string title)
         {
             if (dataIndex < 0)
@@ -87,6 +85,8 @@ namespace XCharts.Runtime
             var serieData = serie.GetSerieData(dataIndex);
             if (serieData == null)
                 return;
+            Color32 color, toColor;
+            SerieHelper.GetItemColor(out color, out toColor, serie, serieData, chart.theme, dataIndex);
 
             var param = serie.context.param;
             param.serieName = serie.serieName;
@@ -94,12 +94,13 @@ namespace XCharts.Runtime
             param.category = category;
             param.dimension = defaultDimension;
             param.serieData = serieData;
+            param.dataCount = serie.dataCount;
             param.value = serieData.GetData(0);
             param.total = serieData.GetData(1);
-            param.color = SerieHelper.GetItemColor(serie, serieData, chart.theme, dataIndex, false);
+            param.color = color;
             param.marker = SerieHelper.GetItemMarker(serie, serieData, marker);
             param.itemFormatter = SerieHelper.GetItemFormatter(serie, serieData, itemFormatter);
-            param.numericFormatter = SerieHelper.GetNumericFormatter(serie, serieData, numericFormatter); ;
+            param.numericFormatter = SerieHelper.GetNumericFormatter(serie, serieData, numericFormatter);;
             param.columns.Clear();
 
             param.columns.Add(param.marker);
@@ -111,6 +112,7 @@ namespace XCharts.Runtime
 
         public override Vector3 GetSerieDataLabelPosition(SerieData serieData, LabelStyle label)
         {
+            var labelLine = SerieHelper.GetSerieLabelLine(serie, serieData);
             var centerRadius = (serieData.context.outsideRadius + serieData.context.insideRadius) / 2;
             var startAngle = serieData.context.startAngle;
             var toAngle = serieData.context.toAngle;
@@ -121,7 +123,17 @@ namespace XCharts.Runtime
                     var px1 = Mathf.Sin(startAngle * Mathf.Deg2Rad) * centerRadius;
                     var py1 = Mathf.Cos(startAngle * Mathf.Deg2Rad) * centerRadius;
                     var xDiff = serie.clockwise ? -label.distance : label.distance;
-                    serieData.context.labelPosition = serie.context.center + new Vector3(px1 + xDiff, py1);
+
+                    if (labelLine != null && labelLine.show)
+                    {
+                        serieData.context.labelLinePosition = serie.context.center + new Vector3(px1, py1) + labelLine.GetStartSymbolOffset();
+                        serieData.context.labelPosition = GetLabelLineEndPosition(serie, serieData, labelLine) + new Vector3(xDiff, 0);
+                    }
+                    else
+                    {
+                        serieData.context.labelLinePosition = serie.context.center + new Vector3(px1 + xDiff, py1);
+                        serieData.context.labelPosition = serieData.context.labelLinePosition;
+                    }
                     break;
                 case LabelStyle.Position.Top:
                 case LabelStyle.Position.End:
@@ -129,13 +141,37 @@ namespace XCharts.Runtime
                     toAngle += serie.clockwise ? label.distance : -label.distance;
                     var px2 = Mathf.Sin(toAngle * Mathf.Deg2Rad) * centerRadius;
                     var py2 = Mathf.Cos(toAngle * Mathf.Deg2Rad) * centerRadius;
-                    serieData.context.labelPosition = serie.context.center + new Vector3(px2, py2);
+
+                    if (labelLine != null && labelLine.show)
+                    {
+                        serieData.context.labelLinePosition = serie.context.center + new Vector3(px2, py2) + labelLine.GetStartSymbolOffset();
+                        serieData.context.labelPosition = GetLabelLineEndPosition(serie, serieData, labelLine);
+                    }
+                    else
+                    {
+                        serieData.context.labelLinePosition = serie.context.center + new Vector3(px2, py2);
+                        serieData.context.labelPosition = serieData.context.labelLinePosition;
+                    }
                     break;
                 default: //LabelStyle.Position.Center
-                    serieData.context.labelPosition = serie.context.center + label.offset;
+                    serieData.context.labelLinePosition = serie.context.center + label.offset;
+                    serieData.context.labelPosition = serieData.context.labelLinePosition;
                     break;
             }
             return serieData.context.labelPosition;
+        }
+
+        private Vector3 GetLabelLineEndPosition(Serie serie, SerieData serieData, LabelLine labelLine)
+        {
+            var isRight = !serie.clockwise;
+            var dire = isRight ? Vector3.right : Vector3.left;
+            var rad = Mathf.Deg2Rad * (isRight ? labelLine.lineAngle : 180 - labelLine.lineAngle);
+            var lineLength1 = ChartHelper.GetActualValue(labelLine.lineLength1, serie.context.outsideRadius);
+            var lineLength2 = ChartHelper.GetActualValue(labelLine.lineLength2, serie.context.outsideRadius);
+            var pos1 = serieData.context.labelLinePosition;
+            var pos2 = pos1 + new Vector3(Mathf.Cos(rad) * lineLength1, Mathf.Sin(rad) * lineLength1);
+            var pos5 = pos2 + dire * lineLength2;
+            return pos5 + labelLine.GetEndSymbolOffset();
         }
 
         public override void DrawSerie(VertexHelper vh)
@@ -145,31 +181,31 @@ namespace XCharts.Runtime
             serie.animation.InitProgress(serie.startAngle, serie.startAngle + 360);
             SerieHelper.UpdateCenter(serie, chart.chartPosition, chart.chartWidth, chart.chartHeight);
             var dataChangeDuration = serie.animation.GetUpdateAnimationDuration();
+            var unscaledTime = serie.animation.unscaledTime;
             var ringWidth = serie.context.outsideRadius - serie.context.insideRadius;
             var dataChanging = false;
             for (int j = 0; j < data.Count; j++)
             {
                 var serieData = data[j];
-                serieData.index = j;
                 if (!serieData.show) continue;
                 if (serieData.IsDataChanged()) dataChanging = true;
-                var value = serieData.GetFirstData(dataChangeDuration);
+                var value = serieData.GetFirstData(unscaledTime, dataChangeDuration);
                 var max = serieData.GetLastData();
-                var degree = (float)(360 * value / max);
+                var degree = (float) (360 * value / max);
                 var startDegree = GetStartAngle(serie);
                 var toDegree = GetToAngle(serie, degree);
-                var itemStyle = SerieHelper.GetItemStyle(serie, serieData, serieData.context.highlight);
+                var itemStyle = SerieHelper.GetItemStyle(serie, serieData);
                 var colorIndex = chart.GetLegendRealShowNameIndex(serieData.legendName);
-                var itemColor = SerieHelper.GetItemColor(serie, serieData, chart.theme, colorIndex, serieData.context.highlight);
-                var itemToColor = SerieHelper.GetItemToColor(serie, serieData, chart.theme, colorIndex, serieData.context.highlight);
+                Color32 itemColor, itemToColor;
+                SerieHelper.GetItemColor(out itemColor, out itemToColor, serie, serieData, chart.theme, colorIndex);
                 var outsideRadius = serie.context.outsideRadius - j * (ringWidth + serie.gap);
                 var insideRadius = outsideRadius - ringWidth;
                 var borderWidth = itemStyle.borderWidth;
                 var borderColor = itemStyle.borderColor;
                 var roundCap = serie.roundCap && insideRadius > 0;
 
-                serieData.context.startAngle = serie.clockwise ? startDegree : toDegree;
-                serieData.context.toAngle = serie.clockwise ? toDegree : startDegree;
+                serieData.context.startAngle = startDegree;
+                serieData.context.toAngle = toDegree;
                 serieData.context.insideRadius = insideRadius;
                 serieData.context.outsideRadius = serieData.radius > 0 ? serieData.radius : outsideRadius;
                 DrawBackground(vh, serie, serieData, j, insideRadius, outsideRadius);
@@ -177,6 +213,12 @@ namespace XCharts.Runtime
                     Color.clear, startDegree, toDegree, borderWidth, borderColor, 0, chart.settings.cicleSmoothness,
                     roundCap, serie.clockwise);
                 DrawCenter(vh, serie, serieData, insideRadius, j == data.Count - 1);
+
+                var serieLabel = SerieHelper.GetSerieLabel(serie, serieData);
+                if (SerieLabelHelper.CanShowLabel(serie, serieData, serieLabel, 0))
+                {
+                    DrawRingLabelLine(vh, serie, serieData, itemColor);
+                }
             }
             if (!serie.animation.IsFinish())
             {
@@ -214,9 +256,7 @@ namespace XCharts.Runtime
             chart.RefreshPainter(serie);
         }
 
-        public override void OnPointerDown(PointerEventData eventData)
-        {
-        }
+        public override void OnPointerDown(PointerEventData eventData) { }
 
         private float GetStartAngle(Serie serie)
         {
@@ -259,7 +299,12 @@ namespace XCharts.Runtime
         private void DrawBackground(VertexHelper vh, Serie serie, SerieData serieData, int index, float insideRadius, float outsideRadius)
         {
             var itemStyle = SerieHelper.GetItemStyle(serie, serieData);
-            var backgroundColor = SerieHelper.GetItemBackgroundColor(serie, serieData, chart.theme, index, false);
+            var backgroundColor = itemStyle.backgroundColor;
+            if (ChartHelper.IsClearColor(backgroundColor))
+            {
+                backgroundColor = chart.theme.GetColor(index);
+                backgroundColor.a = 50;
+            }
             if (itemStyle.backgroundWidth != 0)
             {
                 var centerRadius = (outsideRadius + insideRadius) / 2;
@@ -281,11 +326,11 @@ namespace XCharts.Runtime
             if (itemStyle.show && itemStyle.borderWidth > 0 && !ChartHelper.IsClearColor(itemStyle.borderColor))
             {
                 UGL.DrawDoughnut(vh, serie.context.center, outsideRadius,
-                outsideRadius + itemStyle.borderWidth, itemStyle.borderColor,
-                Color.clear, chart.settings.cicleSmoothness);
+                    outsideRadius + itemStyle.borderWidth, itemStyle.borderColor,
+                    Color.clear, chart.settings.cicleSmoothness);
                 UGL.DrawDoughnut(vh, serie.context.center, insideRadius,
-                insideRadius + itemStyle.borderWidth, itemStyle.borderColor,
-                Color.clear, chart.settings.cicleSmoothness);
+                    insideRadius + itemStyle.borderWidth, itemStyle.borderColor,
+                    Color.clear, chart.settings.cicleSmoothness);
             }
         }
 
@@ -298,16 +343,22 @@ namespace XCharts.Runtime
             for (int i = 0; i < serie.data.Count; i++)
             {
                 var serieData = serie.data[i];
-                serieData.index = i;
                 if (dist >= serieData.context.insideRadius &&
                     dist <= serieData.context.outsideRadius &&
-                    angle >= serieData.context.startAngle &&
-                    angle <= serieData.context.toAngle)
+                    IsInAngle(serieData, angle, serie.clockwise))
                 {
                     return i;
                 }
             }
             return -1;
+        }
+
+        private bool IsInAngle(SerieData serieData, float angle, bool clockwise)
+        {
+            if (clockwise)
+                return angle >= serieData.context.startAngle && angle <= serieData.context.toAngle;
+            else
+                return angle >= serieData.context.toAngle && angle <= serieData.context.startAngle;
         }
 
         private float VectorAngle(Vector2 from, Vector2 to)
@@ -319,6 +370,44 @@ namespace XCharts.Runtime
             angle = cross.z > 0 ? -angle : angle;
             angle = (angle + 360) % 360;
             return angle;
+        }
+
+        private void DrawRingLabelLine(VertexHelper vh, Serie serie, SerieData serieData, Color32 defaltColor)
+        {
+            var serieLabel = SerieHelper.GetSerieLabel(serie, serieData);
+            var labelLine = SerieHelper.GetSerieLabelLine(serie, serieData);
+            if (serieLabel != null && serieLabel.show &&
+                labelLine != null && labelLine.show)
+            {
+                var color = ChartHelper.IsClearColor(labelLine.lineColor) ?
+                    ChartHelper.GetHighlightColor(defaltColor, 0.9f) :
+                    labelLine.lineColor;
+                var isRight = !serie.clockwise;
+                var dire = isRight ? Vector3.right : Vector3.left;
+                var rad = Mathf.Deg2Rad * (isRight ? labelLine.lineAngle : 180 - labelLine.lineAngle);
+                var lineLength1 = ChartHelper.GetActualValue(labelLine.lineLength1, serie.context.outsideRadius);
+                var lineLength2 = ChartHelper.GetActualValue(labelLine.lineLength2, serie.context.outsideRadius);
+                var pos1 = serieData.context.labelLinePosition;
+                var pos2 = pos1 + new Vector3(Mathf.Cos(rad) * lineLength1, Mathf.Sin(rad) * lineLength1);
+                var pos5 = pos2 + dire * lineLength2 + labelLine.GetEndSymbolOffset();
+                serieData.context.labelPosition = pos5;
+                switch (labelLine.lineType)
+                {
+                    case LabelLine.LineType.BrokenLine:
+                        UGL.DrawLine(vh, pos1, pos2, pos5, labelLine.lineWidth, color);
+                        break;
+                    case LabelLine.LineType.Curves:
+                        UGL.DrawCurves(vh, pos1, pos5, pos1, pos2, labelLine.lineWidth, color,
+                            chart.settings.lineSmoothness, UGL.Direction.XAxis);
+                        break;
+                    case LabelLine.LineType.HorizontalLine:
+                        pos5 = pos1 + dire * (lineLength1 + lineLength2);
+                        serieData.context.labelPosition = pos5;
+                        UGL.DrawLine(vh, pos1, pos5, labelLine.lineWidth, color);
+                        break;
+                }
+                DrawLabelLineSymbol(vh, labelLine, pos1, pos5, color);
+            }
         }
     }
 }

@@ -1,4 +1,3 @@
-
 using System;
 using UnityEngine;
 
@@ -7,7 +6,7 @@ namespace XCharts.Runtime
     /// <summary>
     /// </summary>
     [Serializable]
-    public class LineArrow : ChildComponent, ISerieExtraComponent
+    public class LineArrow : ChildComponent, ISerieComponent
     {
         public enum Position
         {
@@ -20,6 +19,7 @@ namespace XCharts.Runtime
             /// </summary>
             Start
         }
+
         [SerializeField] private bool m_Show;
         [SerializeField] private Position m_Position;
         [SerializeField]

@@ -1,57 +1,59 @@
-﻿
-using UnityEngine;
-using UnityEngine.UI;
-using System.Collections.Generic;
 using System;
-using UnityEngine.EventSystems;
-using XUGL;
+using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using XUGL;
 
 namespace XCharts.Runtime
 {
     [AddComponentMenu("XCharts/EmptyChart", 10)]
     [ExecuteInEditMode]
-    [RequireComponent(typeof(RectTransform))]
+    [RequireComponent(typeof(RectTransform), typeof(CanvasRenderer))]
     [DisallowMultipleComponent]
     public partial class BaseChart : BaseGraph, ISerializationCallbackReceiver
     {
         [SerializeField] protected string m_ChartName;
         [SerializeField] protected ThemeStyle m_Theme = new ThemeStyle();
         [SerializeField] protected Settings m_Settings;
+        [SerializeField] protected DebugInfo m_DebugInfo = new DebugInfo();
 
 #pragma warning disable 0414
-        [SerializeField] [ListForComponent(typeof(AngleAxis))] private List<AngleAxis> m_AngleAxes = new List<AngleAxis>();
-        [SerializeField] [ListForComponent(typeof(Background))] private List<Background> m_Backgrounds = new List<Background>();
-        [SerializeField] [ListForComponent(typeof(DataZoom))] private List<DataZoom> m_DataZooms = new List<DataZoom>();
-        [SerializeField] [ListForComponent(typeof(GridCoord))] private List<GridCoord> m_Grids = new List<GridCoord>();
-        [SerializeField] [ListForComponent(typeof(Legend))] private List<Legend> m_Legends = new List<Legend>();
-        [SerializeField] [ListForComponent(typeof(MarkLine))] private List<MarkLine> m_MarkLines = new List<MarkLine>();
-        [SerializeField] [ListForComponent(typeof(MarkArea))] private List<MarkArea> m_MarkAreas = new List<MarkArea>();
-        [SerializeField] [ListForComponent(typeof(PolarCoord))] private List<PolarCoord> m_Polars = new List<PolarCoord>();
-        [SerializeField] [ListForComponent(typeof(RadarCoord))] private List<RadarCoord> m_Radars = new List<RadarCoord>();
-        [SerializeField] [ListForComponent(typeof(RadiusAxis))] private List<RadiusAxis> m_RadiusAxes = new List<RadiusAxis>();
-        [SerializeField] [ListForComponent(typeof(Title))] private List<Title> m_Titles = new List<Title>();
-        [SerializeField] [ListForComponent(typeof(Tooltip))] private List<Tooltip> m_Tooltips = new List<Tooltip>();
-        [SerializeField] [ListForComponent(typeof(VisualMap))] private List<VisualMap> m_VisualMaps = new List<VisualMap>();
-        [SerializeField] [ListForComponent(typeof(XAxis))] private List<XAxis> m_XAxes = new List<XAxis>();
-        [SerializeField] [ListForComponent(typeof(YAxis))] private List<YAxis> m_YAxes = new List<YAxis>();
-        [SerializeField] [ListForComponent(typeof(SingleAxis))] private List<SingleAxis> m_SingleAxes = new List<SingleAxis>();
-        [SerializeField] [ListForComponent(typeof(ParallelCoord))] private List<ParallelCoord> m_Parallels = new List<ParallelCoord>();
-        [SerializeField] [ListForComponent(typeof(ParallelAxis))] private List<ParallelAxis> m_ParallelAxes = new List<ParallelAxis>();
+        [SerializeField][ListForComponent(typeof(AngleAxis))] private List<AngleAxis> m_AngleAxes = new List<AngleAxis>();
+        [SerializeField][ListForComponent(typeof(Background))] private List<Background> m_Backgrounds = new List<Background>();
+        [SerializeField][ListForComponent(typeof(DataZoom))] private List<DataZoom> m_DataZooms = new List<DataZoom>();
+        [SerializeField][ListForComponent(typeof(GridCoord))] private List<GridCoord> m_Grids = new List<GridCoord>();
+        [SerializeField][ListForComponent(typeof(Legend))] private List<Legend> m_Legends = new List<Legend>();
+        [SerializeField][ListForComponent(typeof(MarkLine))] private List<MarkLine> m_MarkLines = new List<MarkLine>();
+        [SerializeField][ListForComponent(typeof(MarkArea))] private List<MarkArea> m_MarkAreas = new List<MarkArea>();
+        [SerializeField][ListForComponent(typeof(PolarCoord))] private List<PolarCoord> m_Polars = new List<PolarCoord>();
+        [SerializeField][ListForComponent(typeof(RadarCoord))] private List<RadarCoord> m_Radars = new List<RadarCoord>();
+        [SerializeField][ListForComponent(typeof(RadiusAxis))] private List<RadiusAxis> m_RadiusAxes = new List<RadiusAxis>();
+        [SerializeField][ListForComponent(typeof(Title))] private List<Title> m_Titles = new List<Title>();
+        [SerializeField][ListForComponent(typeof(Tooltip))] private List<Tooltip> m_Tooltips = new List<Tooltip>();
+        [SerializeField][ListForComponent(typeof(VisualMap))] private List<VisualMap> m_VisualMaps = new List<VisualMap>();
+        [SerializeField][ListForComponent(typeof(XAxis))] private List<XAxis> m_XAxes = new List<XAxis>();
+        [SerializeField][ListForComponent(typeof(YAxis))] private List<YAxis> m_YAxes = new List<YAxis>();
+        [SerializeField][ListForComponent(typeof(SingleAxis))] private List<SingleAxis> m_SingleAxes = new List<SingleAxis>();
+        [SerializeField][ListForComponent(typeof(ParallelCoord))] private List<ParallelCoord> m_Parallels = new List<ParallelCoord>();
+        [SerializeField][ListForComponent(typeof(ParallelAxis))] private List<ParallelAxis> m_ParallelAxes = new List<ParallelAxis>();
+        [SerializeField][ListForComponent(typeof(Comment))] private List<Comment> m_Comments = new List<Comment>();
 
-        [SerializeField] [ListForSerie(typeof(Bar))] private List<Bar> m_SerieBars = new List<Bar>();
-        [SerializeField] [ListForSerie(typeof(Candlestick))] private List<Candlestick> m_SerieCandlesticks = new List<Candlestick>();
-        [SerializeField] [ListForSerie(typeof(EffectScatter))] private List<EffectScatter> m_SerieEffectScatters = new List<EffectScatter>();
-        [SerializeField] [ListForSerie(typeof(Heatmap))] private List<Heatmap> m_SerieHeatmaps = new List<Heatmap>();
-        [SerializeField] [ListForSerie(typeof(Line))] private List<Line> m_SerieLines = new List<Line>();
-        [SerializeField] [ListForSerie(typeof(Pie))] private List<Pie> m_SeriePies = new List<Pie>();
-        [SerializeField] [ListForSerie(typeof(Radar))] private List<Radar> m_SerieRadars = new List<Radar>();
-        [SerializeField] [ListForSerie(typeof(Ring))] private List<Ring> m_SerieRings = new List<Ring>();
-        [SerializeField] [ListForSerie(typeof(Scatter))] private List<Scatter> m_SerieScatters = new List<Scatter>();
-        [SerializeField] [ListForSerie(typeof(Parallel))] private List<Parallel> m_SerieParallels = new List<Parallel>();
-        [SerializeField] [ListForSerie(typeof(SimplifiedLine))] private List<SimplifiedLine> m_SerieSimplifiedLines = new List<SimplifiedLine>();
-        [SerializeField] [ListForSerie(typeof(SimplifiedBar))] private List<SimplifiedBar> m_SerieSimplifiedBars = new List<SimplifiedBar>();
-        [SerializeField] [ListForSerie(typeof(SimplifiedCandlestick))] private List<SimplifiedCandlestick> m_SerieSimplifiedCandlesticks = new List<SimplifiedCandlestick>();
+        [SerializeField][ListForSerie(typeof(Bar))] private List<Bar> m_SerieBars = new List<Bar>();
+        [SerializeField][ListForSerie(typeof(Candlestick))] private List<Candlestick> m_SerieCandlesticks = new List<Candlestick>();
+        [SerializeField][ListForSerie(typeof(EffectScatter))] private List<EffectScatter> m_SerieEffectScatters = new List<EffectScatter>();
+        [SerializeField][ListForSerie(typeof(Heatmap))] private List<Heatmap> m_SerieHeatmaps = new List<Heatmap>();
+        [SerializeField][ListForSerie(typeof(Line))] private List<Line> m_SerieLines = new List<Line>();
+        [SerializeField][ListForSerie(typeof(Pie))] private List<Pie> m_SeriePies = new List<Pie>();
+        [SerializeField][ListForSerie(typeof(Radar))] private List<Radar> m_SerieRadars = new List<Radar>();
+        [SerializeField][ListForSerie(typeof(Ring))] private List<Ring> m_SerieRings = new List<Ring>();
+        [SerializeField][ListForSerie(typeof(Scatter))] private List<Scatter> m_SerieScatters = new List<Scatter>();
+        [SerializeField][ListForSerie(typeof(Parallel))] private List<Parallel> m_SerieParallels = new List<Parallel>();
+        [SerializeField][ListForSerie(typeof(SimplifiedLine))] private List<SimplifiedLine> m_SerieSimplifiedLines = new List<SimplifiedLine>();
+        [SerializeField][ListForSerie(typeof(SimplifiedBar))] private List<SimplifiedBar> m_SerieSimplifiedBars = new List<SimplifiedBar>();
+        [SerializeField][ListForSerie(typeof(SimplifiedCandlestick))] private List<SimplifiedCandlestick> m_SerieSimplifiedCandlesticks = new List<SimplifiedCandlestick>();
 #pragma warning restore 0414
         protected List<Serie> m_Series = new List<Serie>();
         protected List<MainComponent> m_Components = new List<MainComponent>();
@@ -66,7 +68,8 @@ namespace XCharts.Runtime
         public List<MainComponent> components { get { return m_Components; } }
 
         public List<Serie> series { get { return m_Series; } }
-
+        public DebugInfo debug { get { return m_DebugInfo; } }
+        public override HideFlags chartHideFlags { get { return m_DebugInfo.showAllChartObject ? HideFlags.None : HideFlags.HideInHierarchy; } }
 
         protected float m_ChartWidth;
         protected float m_ChartHeight;
@@ -82,11 +85,15 @@ namespace XCharts.Runtime
         protected Action m_OnInit;
         protected Action m_OnUpdate;
         protected Action<VertexHelper> m_OnDrawBase;
+        protected Action<VertexHelper> m_OnDrawUpper;
         protected Action<VertexHelper> m_OnDrawTop;
         protected Action<VertexHelper, Serie> m_OnDrawSerieBefore;
         protected Action<VertexHelper, Serie> m_OnDrawSerieAfter;
-        protected Action<PointerEventData, int, int> m_OnPointerClickPie;
-        protected Action<PointerEventData, int> m_OnPointerClickBar;
+        protected Action<SerieEventData> m_OnSerieClick;
+        protected Action<SerieEventData> m_OnSerieDown;
+        protected Action<SerieEventData> m_OnSerieEnter;
+        protected Action<SerieEventData> m_OnSerieExit;
+        protected Action<int, int> m_OnPointerEnterPie;
         protected Action<Axis, double> m_OnAxisPointerValueChanged;
         protected Action<Legend, int, string, bool> m_OnLegendClick;
         protected Action<Legend, int, string> m_OnLegendEnter;
@@ -97,18 +104,17 @@ namespace XCharts.Runtime
         internal bool m_CheckAnimation = false;
         internal protected List<string> m_LegendRealShowName = new List<string>();
         protected List<Painter> m_PainterList = new List<Painter>();
+        internal Painter m_PainterUpper;
         internal Painter m_PainterTop;
         internal int m_BasePainterVertCount;
+        internal int m_UpperPainterVertCount;
         internal int m_TopPainterVertCount;
-
 
         private ThemeType m_CheckTheme = 0;
         protected List<MainComponentHandler> m_ComponentHandlers = new List<MainComponentHandler>();
         protected List<SerieHandler> m_SerieHandlers = new List<SerieHandler>();
 
-        protected virtual void DefaultChart()
-        {
-        }
+        protected virtual void DefaultChart() { }
 
         protected override void InitComponent()
         {
@@ -125,7 +131,7 @@ namespace XCharts.Runtime
         {
             if (m_Settings == null)
                 m_Settings = Settings.DefaultSettings;
-            CheckTheme();
+            CheckTheme(true);
             base.Awake();
             InitComponentHandlers();
             InitSerieHandlers();
@@ -148,7 +154,6 @@ namespace XCharts.Runtime
             else
                 m_Theme.sharedTheme = XCThemeMgr.GetTheme(ThemeType.Default);
 
-            m_Settings = null;
             var sizeDelta = rectTransform.sizeDelta;
             if (sizeDelta.x < 580 && sizeDelta.y < 300)
             {
@@ -206,6 +211,11 @@ namespace XCharts.Runtime
             m_PainterTop.Refresh();
         }
 
+        public void RefreshUpperPainter()
+        {
+            m_PainterUpper.Refresh();
+        }
+
         public void RefreshPainter(int index)
         {
             var painter = GetPainter(index);
@@ -223,7 +233,7 @@ namespace XCharts.Runtime
             base.RefreshPainter(painter);
             if (painter != null && painter.type == Painter.Type.Serie)
             {
-                m_PainterTop.Refresh();
+                m_PainterUpper.Refresh();
             }
         }
 
@@ -234,11 +244,15 @@ namespace XCharts.Runtime
             painter.SetActive(flag, m_DebugInfo.showAllChartObject);
         }
 
-        protected virtual void CheckTheme()
+        protected virtual void CheckTheme(bool firstInit = false)
         {
             if (m_Theme.sharedTheme == null)
             {
                 m_Theme.sharedTheme = XCThemeMgr.GetTheme(ThemeType.Default);
+            }
+            if (firstInit)
+            {
+                m_CheckTheme = m_Theme.themeType;
             }
             if (m_Theme.sharedTheme != null && m_CheckTheme != m_Theme.themeType)
             {
@@ -272,9 +286,12 @@ namespace XCharts.Runtime
             if (component == null) return;
             if (component.anyDirty)
             {
-                if (component.componentDirty && component.refreshComponent != null)
+                if (component.componentDirty)
                 {
-                    component.refreshComponent.Invoke();
+                    if (component.refreshComponent != null)
+                        component.refreshComponent.Invoke();
+                    else
+                        component.handler.InitComponent();
                 }
                 if (component.vertsDirty)
                 {
@@ -292,6 +309,7 @@ namespace XCharts.Runtime
             base.SetAllComponentDirty();
             m_Theme.SetAllDirty();
             foreach (var com in m_Components) com.SetAllDirty();
+            foreach (var handler in m_SerieHandlers) handler.InitComponent();
             m_RefreshChart = true;
         }
 
@@ -311,14 +329,18 @@ namespace XCharts.Runtime
                 serie.index = i;
                 SetPainterActive(i, true);
             }
+            if (transform.childCount - 3 != m_PainterTop.transform.GetSiblingIndex())
+            {
+                m_PainterTop.transform.SetSiblingIndex(transform.childCount - 3);
+            }
         }
 
         protected override void InitPainter()
         {
             base.InitPainter();
+            if (settings == null) return;
             m_Painter.material = settings.basePainterMaterial;
             m_PainterList.Clear();
-            if (settings == null) return;
             var sizeDelta = new Vector2(m_GraphWidth, m_GraphHeight);
             for (int i = 0; i < settings.maxPainter; i++)
             {
@@ -333,8 +355,16 @@ namespace XCharts.Runtime
                 painter.transform.SetSiblingIndex(index + 1);
                 m_PainterList.Add(painter);
             }
+            m_PainterUpper = ChartHelper.AddPainterObject("painter_u", transform, m_GraphMinAnchor,
+                m_GraphMaxAnchor, m_GraphPivot, sizeDelta, chartHideFlags, 2 + settings.maxPainter);
+            m_PainterUpper.type = Painter.Type.Top;
+            m_PainterUpper.onPopulateMesh = OnDrawPainterUpper;
+            m_PainterUpper.SetActive(true, m_DebugInfo.showAllChartObject);
+            m_PainterUpper.material = settings.topPainterMaterial;
+            m_PainterUpper.transform.SetSiblingIndex(settings.maxPainter + 1);
+
             m_PainterTop = ChartHelper.AddPainterObject("painter_t", transform, m_GraphMinAnchor,
-                    m_GraphMaxAnchor, m_GraphPivot, sizeDelta, chartHideFlags, 2 + settings.maxPainter);
+                m_GraphMaxAnchor, m_GraphPivot, sizeDelta, chartHideFlags, 2 + settings.maxPainter);
             m_PainterTop.type = Painter.Type.Top;
             m_PainterTop.onPopulateMesh = OnDrawPainterTop;
             m_PainterTop.SetActive(true, m_DebugInfo.showAllChartObject);
@@ -377,6 +407,7 @@ namespace XCharts.Runtime
             if (m_Painter == null) return;
             m_Painter.CheckRefresh();
             foreach (var painter in m_PainterList) painter.CheckRefresh();
+            if (m_PainterUpper != null) m_PainterUpper.CheckRefresh();
             if (m_PainterTop != null) m_PainterTop.CheckRefresh();
         }
 
@@ -407,6 +438,11 @@ namespace XCharts.Runtime
             RefreshChart();
         }
 
+        internal virtual void OnSerieDataUpdate(int serieIndex)
+        {
+            foreach (var handler in m_ComponentHandlers) handler.OnSerieDataUpdate(serieIndex);
+        }
+
         internal virtual void OnCoordinateChanged()
         {
             foreach (var component in m_Components)
@@ -425,9 +461,7 @@ namespace XCharts.Runtime
                 background.SetAllDirty();
         }
 
-        protected virtual void OnThemeChanged()
-        {
-        }
+        protected virtual void OnThemeChanged() { }
 
         public virtual void OnDataZoomRangeChanged(DataZoom dataZoom)
         {
@@ -545,6 +579,7 @@ namespace XCharts.Runtime
             var maxPainter = settings.maxPainter;
             var maxSeries = m_Series.Count;
             var rate = Mathf.CeilToInt(maxSeries * 1.0f / maxPainter);
+            m_PainterUpper.Refresh();
             m_PainterTop.Refresh();
             m_DebugInfo.refreshCount++;
             for (int i = painter.index * rate; i < (painter.index + 1) * rate && i < maxSeries; i++)
@@ -552,28 +587,43 @@ namespace XCharts.Runtime
                 var serie = m_Series[i];
                 serie.context.colorIndex = GetLegendRealShowNameIndex(serie.legendName);
                 serie.context.dataPoints.Clear();
+                serie.context.dataIndexs.Clear();
                 serie.context.dataIgnores.Clear();
                 serie.animation.context.isAllItemAnimationEnd = true;
-                if (!serie.context.pointerEnter)
-                    serie.ResetInteract();
-
-                if (m_OnDrawSerieBefore != null)
+                if (serie.show && !serie.animation.HasFadeOut())
                 {
-                    m_OnDrawSerieBefore.Invoke(vh, serie);
-                }
-                DrawPainterSerie(vh, serie);
-                if (i >= 0 && i < m_SerieHandlers.Count)
-                {
-                    var handler = m_SerieHandlers[i];
-                    handler.DrawSerie(vh);
-                    handler.RefreshLabelNextFrame();
-                }
-                if (m_OnDrawSerieAfter != null)
-                {
-                    m_OnDrawSerieAfter(vh, serie);
+                    if (!serie.context.pointerEnter)
+                        serie.ResetInteract();
+                    if (m_OnDrawSerieBefore != null)
+                    {
+                        m_OnDrawSerieBefore.Invoke(vh, serie);
+                    }
+                    DrawPainterSerie(vh, serie);
+                    if (i >= 0 && i < m_SerieHandlers.Count)
+                    {
+                        var handler = m_SerieHandlers[i];
+                        handler.DrawSerie(vh);
+                        handler.RefreshLabelNextFrame();
+                    }
+                    if (m_OnDrawSerieAfter != null)
+                    {
+                        m_OnDrawSerieAfter(vh, serie);
+                    }
                 }
                 serie.context.vertCount = vh.currentVertCount;
             }
+        }
+
+        protected virtual void OnDrawPainterUpper(VertexHelper vh, Painter painter)
+        {
+            vh.Clear();
+            DrawPainterUpper(vh);
+            foreach (var draw in m_ComponentHandlers) draw.DrawUpper(vh);
+            if (m_OnDrawUpper != null)
+            {
+                m_OnDrawUpper(vh);
+            }
+            m_UpperPainterVertCount = vh.currentVertCount;
         }
 
         protected virtual void OnDrawPainterTop(VertexHelper vh, Painter painter)
@@ -588,8 +638,12 @@ namespace XCharts.Runtime
             m_TopPainterVertCount = vh.currentVertCount;
         }
 
-        protected virtual void DrawPainterSerie(VertexHelper vh, Serie serie)
+        protected virtual void DrawPainterSerie(VertexHelper vh, Serie serie) { }
+
+        protected virtual void DrawPainterUpper(VertexHelper vh)
         {
+            foreach (var handler in m_SerieHandlers)
+                handler.DrawUpper(vh);
         }
 
         protected virtual void DrawPainterTop(VertexHelper vh)
@@ -647,7 +701,7 @@ namespace XCharts.Runtime
 
         public void OnBeforeSerialize()
         {
-#if UNITY_EDITOR && UNITY_2019_1_OR_NEWER
+#if UNITY_EDITOR && UNITY_2019_3_OR_NEWER
             if (!UnityEditor.EditorUtility.IsDirty(this))
                 return;
             UnityEditor.EditorUtility.ClearDirty(this);

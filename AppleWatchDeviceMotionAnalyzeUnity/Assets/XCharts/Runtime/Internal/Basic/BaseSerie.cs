@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,8 +10,11 @@ namespace XCharts.Runtime
     {
         public virtual bool vertsDirty { get { return m_VertsDirty; } }
         public virtual bool componentDirty { get { return m_ComponentDirty; } }
-        public virtual bool useDataNameForColor { get { return false; } }
+        
+        public virtual SerieColorBy defaultColorBy { get { return SerieColorBy.Serie; } }
+        public virtual bool titleJustForSerie { get { return false; } }
         public virtual bool useSortData { get { return false; } }
+        public virtual bool multiDimensionLabel { get { return false; } }
         public bool anyDirty { get { return vertsDirty || componentDirty; } }
         public Painter painter { get { return m_Painter; } set { m_Painter = value; } }
         public Action refreshComponent { get; set; }
@@ -26,6 +28,29 @@ namespace XCharts.Runtime
 
         public SerieHandler handler { get; set; }
 
+        
+
+        public static void ClearVerticesDirty(ChildComponent component)
+        {
+            if (component != null)
+                component.ClearVerticesDirty();
+        }
+
+        public static void ClearComponentDirty(ChildComponent component)
+        {
+            if (component != null)
+                component.ClearComponentDirty();
+        }
+
+        public static bool IsVertsDirty(ChildComponent component)
+        {
+            return component == null?false : component.vertsDirty;
+        }
+
+        public static bool IsComponentDirty(ChildComponent component)
+        {
+            return component == null?false : component.componentDirty;
+        }
 
         public virtual void SetVerticesDirty()
         {
@@ -47,9 +72,7 @@ namespace XCharts.Runtime
             m_ComponentDirty = false;
         }
 
-        public virtual void ClearData()
-        {
-        }
+        public virtual void ClearData() { }
 
         public virtual void ClearDirty()
         {
@@ -69,13 +92,9 @@ namespace XCharts.Runtime
                 handler.RemoveComponent();
         }
 
-        public virtual void OnDataUpdate()
-        {
-        }
+        public virtual void OnDataUpdate() { }
 
-        public virtual void OnBeforeSerialize()
-        {
-        }
+        public virtual void OnBeforeSerialize() { }
 
         public virtual void OnAfterDeserialize()
         {

@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,7 +26,7 @@ namespace XCharts.Runtime
         /// <summary>
         /// Color of split area. SplitArea color could also be set in color array,
         /// which the split lines would take as their colors in turns.
-        /// |Dark and light colors in turns are used by default.
+        /// Dark and light colors in turns are used by default.
         /// |分隔区域颜色。分隔区域会按数组中颜色的顺序依次循环设置颜色。默认是一个深浅的间隔色。
         /// </summary>
         public List<Color32> color
@@ -43,7 +42,7 @@ namespace XCharts.Runtime
                 return new AxisSplitArea()
                 {
                     m_Show = false,
-                    m_Color = new List<Color32>() { }
+                        m_Color = new List<Color32>() { }
                 };
             }
         }
